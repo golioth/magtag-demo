@@ -18,6 +18,11 @@ LOG_MODULE_REGISTER(golioth_magtag, LOG_LEVEL_DBG);
 /* Accelerometer */
 #include <drivers/sensor.h>
 
+/* ePaper */
+#include "epaper/DEV_Config.h"
+#include "epaper/EPD_2in9d.h"
+#include "epaper/ImageData.h"
+
 /* ws2812 */
 #include <zephyr.h>
 #include <drivers/led_strip.h>
@@ -482,6 +487,19 @@ void main(void)
 	gpio_add_callback(button1.port, &button_cb_data);
 	gpio_add_callback(button2.port, &button_cb_data);
 	gpio_add_callback(button3.port, &button_cb_data);
+
+	/* ePaper */
+	LOG_INF("Setup ePaper pins");
+  	DEV_Module_Init();
+
+    LOG_INF("ePaper Init and Clear");
+    EPD_2IN9D_Init();
+    EPD_2IN9D_Clear();
+	k_sleep(K_MSEC(500));
+
+	LOG_INF("Show Golioth logo");
+	EPD_2IN9D_Display((void *)gImage_2in9); /* cast because function is not expecting a CONST array) */
+    EPD_2IN9D_Sleep(); /* always sleep the ePaper display to avoid damaging it */
 
 	while (true) {
 		if (++lis3dh_loopcount >= 50) {

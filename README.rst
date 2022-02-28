@@ -4,6 +4,8 @@ Golioth Demo on Adafruit MagTag
 This demonstrates how to interact with the Golioth Cloud using Zephyr on the
 `Adafruit MagTag board`_.
 
+**NOTE:** Update your Zephyr toolchain to ensure the ePaper works.
+
 Resources
 *********
 

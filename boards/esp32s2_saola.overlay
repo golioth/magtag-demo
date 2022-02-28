@@ -33,6 +33,12 @@
 	aliases {
 		led-strip = &led_strip;
 		neopower = &neopower;
+		mosi = &mosi;
+		sclk = &sclk;
+		csel = &csel;
+		busy = &busy;
+		dc = &dc;
+		rst = &rst;
 		sw0 = &button0;
         sw1 = &button1;
 		sw2 = &button2;
@@ -44,11 +50,35 @@
         neopower: neo_power {
             gpios = <&gpio0 21 GPIO_ACTIVE_HIGH>;
             label = "Neopower";
+		};
+        mosi: mosi_p {
+            gpios = <&gpio1 3 GPIO_ACTIVE_HIGH>;
+            label = "mosi";
+        };
+		sclk: sclk_p {
+            gpios = <&gpio1 4 GPIO_ACTIVE_HIGH>;
+            label = "sclk";
+        };
+		csel: csel_p {
+            gpios = <&gpio0 8 GPIO_ACTIVE_HIGH>;
+            label = "csel";
+        };
+		dc: dc_pin {
+            gpios = <&gpio0 7 GPIO_ACTIVE_HIGH>;
+            label = "data_command";
+        };
+		rst: reset {
+            gpios = <&gpio0 6 GPIO_ACTIVE_HIGH>;
+            label = "reset";
         };
     };
 
 	gpio_keys {
         compatible = "gpio-keys";
+		busy: busy_pin {
+            gpios = <&gpio0 5 GPIO_ACTIVE_HIGH>;
+            label = "busy";
+        };
         button0: button_0 {
             gpios = <&gpio0 11 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
             label = "Button 0";
