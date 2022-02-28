@@ -22,6 +22,15 @@ LOG_MODULE_REGISTER(golioth_magtag, LOG_LEVEL_DBG);
 #include "epaper/DEV_Config.h"
 #include "epaper/EPD_2in9d.h"
 #include "epaper/ImageData.h"
+const uint8_t demostr0[] = "I must not fear.";
+const uint8_t demostr1[] = "Fear is the mind-killer.";
+const uint8_t demostr2[] = "Fear is the little-death that brings total obliteration.";
+const uint8_t demostr3[] = "I will face my fear.";
+const uint8_t demostr4[] = "I will permit it to pass over me and through me.";
+const uint8_t demostr5[] = "And when it has gone past I will turn the inner eye to see its path.";
+const uint8_t demostr6[] = "Where the fear has gone there will be nothing.";
+const uint8_t demostr7[] = "Only I will remain.";
+const uint8_t *str_p[] = {demostr0, demostr1, demostr2, demostr3, demostr4, demostr5, demostr6, demostr7 };
 
 /* ws2812 */
 #include <zephyr.h>
@@ -501,6 +510,9 @@ void main(void)
 	EPD_2IN9D_Display((void *)gImage_2in9); /* cast because function is not expecting a CONST array) */
     EPD_2IN9D_Sleep(); /* always sleep the ePaper display to avoid damaging it */
 
+	uint8_t epaper_partial_demo_loopcount = 0;
+	uint8_t epaper_partial_demo_linecount = 0;
+
 	while (true) {
 		if (++lis3dh_loopcount >= 50) {
 			lis3dh_loopcount = 0;
@@ -510,6 +522,20 @@ void main(void)
 		if (leds_need_update_flag) {
 			ws2812_blit(strip, pixels, STRIP_NUM_PIXELS);
 			leds_need_update_flag = 0;
+		}
+
+		if (++epaper_partial_demo_loopcount >= 5 && epaper_partial_demo_linecount < 8)
+		{
+			EPD_2IN9D_Init();
+			EPD_2IN9D_LinePart(
+				(void *)str_p[epaper_partial_demo_linecount],
+				strlen(str_p[epaper_partial_demo_linecount]),
+				epaper_partial_demo_linecount,
+				0,
+				296
+				);
+			EPD_2IN9D_Sleep();
+			++epaper_partial_demo_linecount;
 		}
 
 		k_sleep(K_MSEC(200));

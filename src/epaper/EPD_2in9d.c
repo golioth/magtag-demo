@@ -53,6 +53,7 @@
 ******************************************************************************/
 #include "EPD_2in9d.h"
 #include "Debug.h"
+#include "font5x8.h"
 
 /**
  * partial screen update LUT
@@ -357,6 +358,87 @@ void EPD_2IN9D_DisplayPart(UBYTE *Image)
             EPD_2IN9D_SendData(Image[i + j * Width]);
         }
     }
+
+    /* Set partial refresh */    
+    EPD_2IN9D_TurnOnDisplay();
+}
+
+uint8_t flip_invert(uint8_t column) {
+    // Flip endianness and invert
+    uint8_t ret_column = 0;
+    for (uint8_t i=0; i<8; i++)
+    {
+        if (~column & (1<<i))
+        {
+            ret_column |= (1<<(7-i));
+        }
+    }
+    return ret_column;
+}
+
+/**
+ * @brief Use partial refresh to show string on one line of the display
+ * 
+ * Display is considered protrait-mode 296x128. This leaves 16 lines that are
+ * 8-bits tall, and 296 columns
+ * 
+ * @param str           string to be written to display
+ * @param str_len       numer of characters in string
+ * @param line          0..16
+ * @param col_start     0..295
+ * @param col_end       0..295
+ */
+void EPD_2IN9D_LinePart(uint8_t *str, uint8_t str_len, uint8_t line, uint16_t col_start, uint16_t col_end)
+{
+    /* Set partial Windows */
+    EPD_2IN9D_SetPartReg();
+    EPD_2IN9D_SendCommand(0x91);		//This command makes the display enter partial mode
+    EPD_2IN9D_SendCommand(0x90);		//resolution setting
+    EPD_2IN9D_SendData(line*8);           //x-start
+    EPD_2IN9D_SendData((line*8)+8 - 1);       //x-end
+
+    EPD_2IN9D_SendData(0);
+    EPD_2IN9D_SendData(col_start);     //y-start
+    EPD_2IN9D_SendData(col_end / 256);
+    EPD_2IN9D_SendData(col_end % 256 - 1);  //y-end
+    EPD_2IN9D_SendData(0x28);
+    
+    /* send data */
+    EPD_2IN9D_SendCommand(0x13);
+
+    uint8_t send_col;
+    uint8_t letter;
+    uint8_t column = 0;
+    uint8_t str_idx = 48;
+    EPD_2IN9D_SendData(0xff); //Unused column
+    for (UWORD j = 0; j < 294; j++) {
+        for (UWORD i = 0; i < 1; i++) {
+            if (column == 0 || str_idx >= str_len)
+            {
+                send_col = 0xff;
+            }
+            else
+            {
+                if (str[str_idx] < 32 || str[str_idx] > 127)
+                {
+                    //Out of bounds, print a space
+                    letter = 0;
+                }
+                else
+                {
+                    letter = str[str_idx] - 32;
+                }
+                send_col = flip_invert(font5x8[(5*letter)+(5-column)]);
+            }
+            EPD_2IN9D_SendData(send_col);
+            if (++column > 5)
+            {
+                column = 0;
+                --str_idx;
+            }
+        }
+    }
+    EPD_2IN9D_SendData(0xff); //Unused column
 
     /* Set partial refresh */    
     EPD_2IN9D_TurnOnDisplay();
