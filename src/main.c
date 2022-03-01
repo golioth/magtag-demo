@@ -77,7 +77,7 @@ struct led_settings led_received_changes;
 uint8_t leds_need_update_flag;
 
 /* prototypes */
-static void set_leds(uint8_t led_num, struct led_settings *ls);
+static void set_leds(uint8_t led_num, const char * l_color, int8_t l_state);
 
 /*
  * This function is registed to be called when the data
@@ -121,22 +121,22 @@ static int on_update(const struct coap_packet *response,
 		if (ret & 1<<0)
 		{
 			LOG_INF("LED0 Color: %s State: %d", led_received_changes.led0_color, led_received_changes.led0_state);
-			set_leds(0, &led_received_changes);
+			set_leds(0, led_received_changes.led0_color, led_received_changes.led0_state);
 		}
 		if (ret & 1<<2)
 		{
 			LOG_INF("LED1 Color: %s State: %d", led_received_changes.led1_color, led_received_changes.led1_state);
-			set_leds(1, &led_received_changes);
+			set_leds(1, led_received_changes.led1_color, led_received_changes.led1_state);
 		}
 		if (ret & 1<<4)
 		{
 			LOG_INF("LED2 Color: %s State: %d", led_received_changes.led2_color, led_received_changes.led2_state);
-			set_leds(2, &led_received_changes);
+			set_leds(2, led_received_changes.led2_color, led_received_changes.led2_state);
 		}
 		if (ret & 1<<6)
 		{
 			LOG_INF("LED3 Color: %s State: %d", led_received_changes.led3_color, led_received_changes.led3_state);
-			set_leds(3, &led_received_changes);
+			set_leds(3, led_received_changes.led3_color, led_received_changes.led3_state);
 		}
 		++leds_need_update_flag;
 	}
@@ -153,44 +153,32 @@ static uint16_t get_fasthash(const char *word)
 	return sum;
 }
 
-static void set_leds(uint8_t led_num, struct led_settings *ls)
+static void set_leds(uint8_t led_num, const char * l_color, int8_t l_state)
 {
-	int8_t l_state; const char * l_color;
-	switch(led_num)
-	{
-		//FIXME: led_states needs to be passed by reference to this function
-		case(0): l_color = ls->led0_color; l_state = ls->led0_state; break;
-		case(1): l_color = ls->led1_color; l_state = ls->led1_state; break;
-		case(2): l_color = ls->led2_color; l_state = ls->led2_state; break;
-		case(3): l_color = ls->led3_color; l_state = ls->led3_state; break;
-	}
+	uint8_t color;
 	switch(get_fasthash(l_color))
 	{
 		case (111):
-			LOG_INF("LED #%d is off!!!", led_num);
-			//set_pixel(led_num, colors[0], l_state);
-			led_states[led_num].color = 0;
-			led_states[led_num].state = l_state;
+			LOG_INF("LED #%d is black!!!", led_num);
+			color = 0;
 			break;
 		case (115):
 			LOG_INF("LED #%d is red!!!", led_num);
-			//set_pixel(led_num, colors[1], l_state);
-			led_states[led_num].color = 1;
-			led_states[led_num].state = l_state;
+			color = 1;
 			break;
 		case (123):
 			LOG_INF("LED #%d is green!!!", led_num);
-			//set_pixel(led_num, colors[2], l_state);
-			led_states[led_num].color = 2;
-			led_states[led_num].state = l_state;
+			color = 2;
 			break;
 		case (30):
 			LOG_INF("LED #%d is blue!!!", led_num);
-			//set_pixel(led_num, colors[3], l_state);
-			led_states[led_num].color = 3;
-			led_states[led_num].state = l_state;
+			color = 3;
 			break;
+		default:
+			/* not a valid color name */
+			return;
 	}
+	set_pixel(led_states, led_num, color, l_state);
 }
 
 /*
@@ -297,12 +285,22 @@ static void golioth_on_message(struct golioth_client *client,
 			       ARRAY_SIZE(coap_replies));
 }
 
+/**
+ * @brief Handle button presses and update LEDs
+ *
+ * This function will update the on/off state of the LED by setting turning the
+ * actual LED on or off and writing the new value to LightDB state
+ *
+ * @param dev 	device struct
+ * @param cb 	callback struct
+ * @param pins 	pinmask representing buttons that are pressed
+ */
 void button_pressed(const struct device *dev, struct gpio_callback *cb,
 		    uint32_t pins)
 {
 	uint8_t endpoint[27] = ".d/led_settings/led0_state";
 	uint8_t endpoint_idx = 19;	//Location of the number to change in the endpoint
-	/* Array to check JSON parsed valid keys */
+	/* Array to check which button was pressed */
 	uint32_t button_result[] = {
 		pins & BIT(button0.pin),
 		pins & BIT(button1.pin),
@@ -329,8 +327,6 @@ void button_pressed(const struct device *dev, struct gpio_callback *cb,
 		}
 	}
 }
-
-
 
 void main(void)
 {

@@ -34,7 +34,6 @@ void set_pixel(struct led_color_state *states, uint8_t pixel_n, uint8_t color_n,
 {
     if (pixel_n >= STRIP_NUM_PIXELS) return;
     if (color_n >= sizeof(colors)) return;
-	//memcpy(&pixels[pixel_n], &color, sizeof(struct led_rgb));
     states[pixel_n].color = color_n;
     states[pixel_n].state = state;
 }

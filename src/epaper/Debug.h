@@ -4,7 +4,7 @@
 // #include <logging/log.h>
 // LOG_MODULE_REGISTER(epaper_debug, LOG_LEVEL_DBG);
 
-#define USE_DEBUG 1
+#define USE_DEBUG 0
 #if USE_DEBUG
 	#define Debug(__info) printk(__info)
 #else
