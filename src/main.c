@@ -35,16 +35,8 @@ const uint8_t *str_p[] = {demostr0, demostr1, demostr2, demostr3, demostr4, demo
 /* ws2812 */
 #include "ws2812/ws2812_control.h"
 
-/* Buttons */
-#define SW0_NODE	DT_ALIAS(sw0)
-#define SW1_NODE	DT_ALIAS(sw1)
-#define SW2_NODE	DT_ALIAS(sw2)
-#define SW3_NODE	DT_ALIAS(sw3)
-static const struct gpio_dt_spec button0 = GPIO_DT_SPEC_GET(SW0_NODE, gpios);
-static const struct gpio_dt_spec button1 = GPIO_DT_SPEC_GET(SW1_NODE, gpios);
-static const struct gpio_dt_spec button2 = GPIO_DT_SPEC_GET(SW2_NODE, gpios);
-static const struct gpio_dt_spec button3 = GPIO_DT_SPEC_GET(SW3_NODE, gpios);
-static struct gpio_callback button_cb_data;
+/* buttons*/
+#include "buttons/buttons.h"
 
 /* Golioth */
 static struct golioth_client *client = GOLIOTH_SYSTEM_CLIENT_GET();
@@ -365,20 +357,7 @@ void main(void)
 	ws2812_blit(strip, led_states, STRIP_NUM_PIXELS);
 
 	/* buttons */
-	gpio_pin_configure_dt(&button0, GPIO_INPUT);
-	gpio_pin_configure_dt(&button1, GPIO_INPUT);
-	gpio_pin_configure_dt(&button2, GPIO_INPUT);
-	gpio_pin_configure_dt(&button3, GPIO_INPUT);
-	gpio_pin_interrupt_configure_dt(&button0, GPIO_INT_EDGE_TO_ACTIVE);
-	gpio_pin_interrupt_configure_dt(&button1, GPIO_INT_EDGE_TO_ACTIVE);
-	gpio_pin_interrupt_configure_dt(&button2, GPIO_INT_EDGE_TO_ACTIVE);
-	gpio_pin_interrupt_configure_dt(&button3, GPIO_INT_EDGE_TO_ACTIVE);
-	uint32_t button_mask = BIT(button0.pin) | BIT(button1.pin) | BIT(button2.pin) | BIT(button3.pin);
-	gpio_init_callback(&button_cb_data, button_pressed, button_mask);
-	gpio_add_callback(button0.port, &button_cb_data);
-	gpio_add_callback(button1.port, &button_cb_data);
-	gpio_add_callback(button2.port, &button_cb_data);
-	gpio_add_callback(button3.port, &button_cb_data);
+	buttons_init(button_pressed);
 
 	/* ePaper */
 	LOG_INF("Setup ePaper pins");
