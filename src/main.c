@@ -16,7 +16,7 @@ LOG_MODULE_REGISTER(golioth_magtag, LOG_LEVEL_DBG);
 #include <data/json.h>
 
 /* Accelerometer */
-#include <drivers/sensor.h>
+#include "accelerometer/accel.h"
 
 /* ePaper */
 #include "epaper/DEV_Config.h"
@@ -204,61 +204,24 @@ static void golioth_on_connect(struct golioth_client *client)
 	}
 }
 
-static void fetch_and_display(const struct device *sensor)
+
+static void record_accelerometer(const struct device *sensor)
 {
-	static unsigned int count;
 	struct sensor_value accel[3];
-	struct sensor_value temperature;
-	const char *overrun = "";
-	int rc = sensor_sample_fetch(sensor);
-
-	++count;
-	if (rc == -EBADMSG) {
-		/* Sample overrun.  Ignore in polled mode. */
-		if (IS_ENABLED(CONFIG_LIS2DH_TRIGGER)) {
-			overrun = "[OVERRUN] ";
-		}
-		rc = 0;
-	}
-	if (rc == 0) {
-		rc = sensor_channel_get(sensor,
-					SENSOR_CHAN_ACCEL_XYZ,
-					accel);
-	}
-	if (rc < 0) {
-		LOG_ERR("ERROR: Update failed: %d", rc);
-	} else {
-		LOG_INF("#%u @ %u ms: %sx %f , y %f , z %f",
-		       count, k_uptime_get_32(), overrun,
-		       sensor_value_to_double(&accel[0]),
-		       sensor_value_to_double(&accel[1]),
-		       sensor_value_to_double(&accel[2]));
-
-		char str[160];
-		snprintk(str, sizeof(str) - 1,
-				"{\"x\":%f,\"y\":%f,\"z\":%f}",
-				sensor_value_to_double(&accel[0]),
-				sensor_value_to_double(&accel[1]),
-				sensor_value_to_double(&accel[2])
-				);
-		int err = golioth_lightdb_set(client,
-				  GOLIOTH_LIGHTDB_STREAM_PATH("accel"),
-				  COAP_CONTENT_FORMAT_TEXT_PLAIN,
-				  str, strlen(str));
-		if (err) {
-			LOG_WRN("Failed to update led0_state: %d", err);
-		}
-	}
-
-	if (IS_ENABLED(CONFIG_LIS2DH_MEASURE_TEMPERATURE)) {
-		if (rc == 0) {
-			rc = sensor_channel_get(sensor, SENSOR_CHAN_DIE_TEMP, &temperature);
-			if (rc < 0) {
-				LOG_ERR("ERROR: Unable to read temperature:%d", rc);
-			} else {
-				LOG_INF(", t %f", sensor_value_to_double(&temperature));
-			}
-		}
+	fetch_and_display(sensor, accel);
+	char str[160];
+	snprintk(str, sizeof(str) - 1,
+			"{\"x\":%f,\"y\":%f,\"z\":%f}",
+			sensor_value_to_double(&accel[0]),
+			sensor_value_to_double(&accel[1]),
+			sensor_value_to_double(&accel[2])
+			);
+	int err = golioth_lightdb_set(client,
+				GOLIOTH_LIGHTDB_STREAM_PATH("accel"),
+				COAP_CONTENT_FORMAT_TEXT_PLAIN,
+				str, strlen(str));
+	if (err) {
+		LOG_WRN("Failed to update led0_state: %d", err);
 	}
 }
 
@@ -327,16 +290,8 @@ void main(void)
 	leds_need_update_flag = 0;
 
 	/* Accelerometer */
-	const struct device *sensor = DEVICE_DT_GET_ANY(st_lis2dh);
+	accelerometer_init();
 	uint8_t lis3dh_loopcount = 0;
-	if (sensor == NULL) {
-		LOG_ERR("No device found");
-		return;
-	}
-	if (!device_is_ready(sensor)) {
-		LOG_ERR("Device %s is not ready", sensor->name);
-		return;
-	}
 
 	/* WiFi */
 	if (IS_ENABLED(CONFIG_GOLIOTH_SAMPLE_WIFI)) {
@@ -378,7 +333,7 @@ void main(void)
 	while (true) {
 		if (++lis3dh_loopcount >= 50) {
 			lis3dh_loopcount = 0;
-			fetch_and_display(sensor);
+			record_accelerometer(sensor);
 		}
 
 		if (leds_need_update_flag) {
