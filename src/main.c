@@ -33,34 +33,7 @@ const uint8_t demostr7[] = "Only I will remain.";
 const uint8_t *str_p[] = {demostr0, demostr1, demostr2, demostr3, demostr4, demostr5, demostr6, demostr7 };
 
 /* ws2812 */
-#include <zephyr.h>
-#include <drivers/led_strip.h>
-#include <device.h>
-#include <drivers/spi.h>
-#include <sys/util.h>
-#define STRIP_NODE		DT_ALIAS(led_strip)
-#define STRIP_NUM_PIXELS	DT_PROP(DT_ALIAS(led_strip), chain_length)
-#define RGB(_r, _g, _b) { .r = (_r), .g = (_g), .b = (_b) }
-static const struct led_rgb colors[] = {
-	RGB(0x00, 0x00, 0x00), /* off */
-	RGB(0x0F, 0x00, 0x00), /* red */
-	RGB(0x00, 0x0F, 0x00), /* green */
-	RGB(0x00, 0x00, 0x0F), /* blue */
-};
-struct led_rgb pixels[STRIP_NUM_PIXELS];
-static const struct device *strip = DEVICE_DT_GET(STRIP_NODE);
-
-/* mosfet control pin for ws2812 power rail */
-#define NEOPOWER_NODE 	DT_ALIAS(neopower)
-#if DT_NODE_HAS_STATUS(NEOPOWER_NODE, okay)
-#define NEOPOWER		DT_GPIO_LABEL(NEOPOWER_NODE, gpios)
-#define NEOPOWER_PIN	DT_GPIO_PIN(NEOPOWER_NODE, gpios)
-#define NEOPOWER_FLAGS	DT_GPIO_FLAGS(NEOPOWER_NODE, gpios)
-#endif
-
-/* ws2812 prototypes*/
-void clear_pixels(void);
-void set_pixel(uint8_t pixel_n, const struct led_rgb color, int8_t state);
+#include "ws2812/ws2812_control.h"
 
 /* Buttons */
 #define SW0_NODE	DT_ALIAS(sw0)
@@ -152,17 +125,17 @@ static int on_update(const struct coap_packet *response,
 		}
 		if (ret & 1<<2)
 		{
-			LOG_INF("LED1 Color: %s State: %d", led_received_changes.led1_color, led_received_changes.led1_state);
+			LOG_INF("LED1 Color: %s State: %d", led_received_changes.led1_color, led_states[1].state);
 			set_leds(1, &led_received_changes);
 		}
 		if (ret & 1<<4)
 		{
-			LOG_INF("LED2 Color: %s State: %d", led_received_changes.led2_color, led_received_changes.led2_state);
+			LOG_INF("LED2 Color: %s State: %d", led_received_changes.led2_color, led_states[2].state);
 			set_leds(2, &led_received_changes);
 		}
 		if (ret & 1<<6)
 		{
-			LOG_INF("LED3 Color: %s State: %d", led_received_changes.led3_color, led_received_changes.led3_state);
+			LOG_INF("LED3 Color: %s State: %d", led_received_changes.led3_color, led_states[3].state);
 			set_leds(3, &led_received_changes);
 		}
 		++leds_need_update_flag;
@@ -185,28 +158,33 @@ static void set_leds(uint8_t led_num, struct led_settings *ls)
 	int8_t l_state; const char * l_color;
 	switch(led_num)
 	{
-		case(0): l_color = ls->led0_color; l_state = ls->led0_state; break;
-		case(1): l_color = ls->led1_color; l_state = ls->led1_state; break;
-		case(2): l_color = ls->led2_color; l_state = ls->led2_state; break;
-		case(3): l_color = ls->led3_color; l_state = ls->led3_state; break;
+		//FIXME: led_states needs to be passed by reference to this function
+		case(0): l_color = ls->led0_color; l_state = ls->led0_state; led_states[0].state = ls->led0_state; break;
+		case(1): l_color = ls->led1_color; l_state = ls->led1_state; led_states[1].state = ls->led1_state;break;
+		case(2): l_color = ls->led2_color; l_state = ls->led2_state; led_states[2].state = ls->led2_state;break;
+		case(3): l_color = ls->led3_color; l_state = ls->led3_state; led_states[3].state = ls->led3_state;break;
 	}
 	switch(get_fasthash(l_color))
 	{
 		case (111):
 			LOG_INF("LED #%d is off!!!", led_num);
-			set_pixel(led_num, colors[0], l_state);
+			//set_pixel(led_num, colors[0], l_state);
+			led_states[led_num].color = 0;
 			break;
 		case (115):
 			LOG_INF("LED #%d is red!!!", led_num);
-			set_pixel(led_num, colors[1], l_state);
+			//set_pixel(led_num, colors[1], l_state);
+			led_states[led_num].color = 1;
 			break;
 		case (123):
 			LOG_INF("LED #%d is green!!!", led_num);
-			set_pixel(led_num, colors[2], l_state);
+			//set_pixel(led_num, colors[2], l_state);
+			led_states[led_num].color = 2;
 			break;
 		case (30):
 			LOG_INF("LED #%d is blue!!!", led_num);
-			set_pixel(led_num, colors[3], l_state);
+			//set_pixel(led_num, colors[3], l_state);
+			led_states[led_num].color = 3;
 			break;
 	}
 }
@@ -315,34 +293,13 @@ static void golioth_on_message(struct golioth_client *client,
 			       ARRAY_SIZE(coap_replies));
 }
 
-/**
- * @brief Zero out the buffer (all pixels off)
- * 
- */
-void clear_pixels(void)
-{
-    memset(&pixels, 0x00, sizeof(pixels));
-}
-
-/**
- * @brief Set a single pixel color
- * 
- * @param pixel_n   the pixel number
- * @param color     the color_rgb value
- */
-void set_pixel(uint8_t pixel_n, const struct led_rgb color, int8_t state)
-{
-    if (pixel_n >= STRIP_NUM_PIXELS) return;
-	memcpy(&pixels[pixel_n], &color, sizeof(struct led_rgb));
-}
-
 void button_pressed(const struct device *dev, struct gpio_callback *cb,
 		    uint32_t pins)
 {
 	if (pins & BIT(button0.pin)) {
-		if (led_received_changes.led0_state < 0) return;
-		int8_t toggle_val = led_received_changes.led0_state > 0 ? 0 : 1;
-		led_received_changes.led0_state = toggle_val;
+		if (led_states[0].state < 0) return;
+		int8_t toggle_val = led_states[0].state > 0 ? 0 : 1;
+		led_states[0].state = toggle_val;
 		++leds_need_update_flag;
 		char buf[2] = { '0'+toggle_val, 0 };
 		int err = golioth_lightdb_set(client,
@@ -354,9 +311,9 @@ void button_pressed(const struct device *dev, struct gpio_callback *cb,
 		}
 	}
 	if (pins & BIT(button1.pin)) {
-		if (led_received_changes.led1_state < 0) return;
-		int8_t toggle_val = led_received_changes.led1_state > 0 ? 0 : 1;
-		led_received_changes.led1_state = toggle_val;
+		if (led_states[1].state < 0) return;
+		int8_t toggle_val = led_states[1].state > 0 ? 0 : 1;
+		led_states[1].state = toggle_val;
 		++leds_need_update_flag;
 		char buf[2] = { '0'+toggle_val, 0 };
 		int err = golioth_lightdb_set(client,
@@ -368,9 +325,9 @@ void button_pressed(const struct device *dev, struct gpio_callback *cb,
 		}
 	}
 	if (pins & BIT(button2.pin)) {
-		if (led_received_changes.led2_state < 0) return;
-		int8_t toggle_val = led_received_changes.led2_state > 0 ? 0 : 1;
-		led_received_changes.led2_state = toggle_val;
+		if (led_states[2].state < 0) return;
+		int8_t toggle_val = led_states[2].state > 0 ? 0 : 1;
+		led_states[2].state = toggle_val;
 		++leds_need_update_flag;
 		char buf[2] = { '0'+toggle_val, 0 };
 		int err = golioth_lightdb_set(client,
@@ -382,9 +339,9 @@ void button_pressed(const struct device *dev, struct gpio_callback *cb,
 		}
 	}
 	if (pins & BIT(button3.pin)) {
-		if (led_received_changes.led3_state < 0) return;
-		int8_t toggle_val = led_received_changes.led3_state > 0 ? 0 : 1;
-		led_received_changes.led3_state = toggle_val;
+		if (led_states[3].state < 0) return;
+		int8_t toggle_val = led_states[3].state > 0 ? 0 : 1;
+		led_states[3].state = toggle_val;
 		++leds_need_update_flag;
 		char buf[2] = { '0'+toggle_val, 0 };
 		int err = golioth_lightdb_set(client,
@@ -397,41 +354,13 @@ void button_pressed(const struct device *dev, struct gpio_callback *cb,
 	}
 }
 
-void ws2812_blit(const struct device *dev, struct led_rgb *pixels, uint8_t pix_count)
-{
-	struct led_rgb buffer[pix_count];
-	for (uint8_t i=0; i<pix_count; i++)
-	{
-		memcpy(&buffer[i], &pixels[i], sizeof(struct led_rgb));
-	}
-	if (led_received_changes.led0_state == 0)
-	{
-		memcpy(&buffer[0], &colors[0], sizeof(struct led_rgb)); // LED is off
-	}
-	if (led_received_changes.led1_state == 0)
-	{
-		memcpy(&buffer[1], &colors[0], sizeof(struct led_rgb)); // LED is off
-	}
-	if (led_received_changes.led2_state == 0)
-	{
-		memcpy(&buffer[2], &colors[0], sizeof(struct led_rgb)); // LED is off
-	}
-	if (led_received_changes.led3_state == 0)
-	{
-		memcpy(&buffer[3], &colors[0], sizeof(struct led_rgb)); // LED is off
-	}
-	led_strip_update_rgb(strip, buffer, pix_count);
-}
+
 
 void main(void)
 {
 	LOG_DBG("Start MagTag demo");
 
 	leds_need_update_flag = 0;
-	led_received_changes.led0_state = -1;
-	led_received_changes.led1_state = -1;
-	led_received_changes.led2_state = -1;
-	led_received_changes.led3_state = -1;
 
 	/* Accelerometer */
 	const struct device *sensor = DEVICE_DT_GET_ANY(st_lis2dh);
@@ -455,27 +384,7 @@ void main(void)
 	client->on_message = golioth_on_message;
 	golioth_system_client_start();
 
-	/* ws2812 */
-
-	/* Turn on power to the ws2812 neopixels */
-	#if DT_NODE_HAS_STATUS(NEOPOWER_NODE, okay)
-	const struct device *neopower_dev;
-	neopower_dev = device_get_binding(NEOPOWER);
-	int ret = gpio_pin_configure(neopower_dev, NEOPOWER_PIN, GPIO_OUTPUT_ACTIVE | NEOPOWER_FLAGS);
-	if (ret < 0) {
-		LOG_ERR("Failed to configure NEOPOWER pin: %d", ret);
-	}
-	gpio_pin_set(neopower_dev, NEOPOWER_PIN, 0);
-	#endif
-
-	#if defined(CONFIG_SOC_ESP32S2)
-	/* This is a hack to fix incorrect SPI polarity on ESP32s2-based boards */
-	#define SPI_CTRL_REG 0x8
-	#define SPI_D_POL 19
-	uint32_t* myreg = (uint32_t*)(DT_REG_ADDR(DT_PARENT(DT_ALIAS(led_strip)))+SPI_CTRL_REG);
-	*myreg &= ~(1<<SPI_D_POL);
-	LOG_ERR("Fixing ESP32s2 Register %p Value: 0x%x", myreg, *myreg);
-	#endif
+	ws2812_init();
 
 	clear_pixels();
 	set_pixel(1, colors[3], 1);
@@ -520,7 +429,7 @@ void main(void)
 		}
 
 		if (leds_need_update_flag) {
-			ws2812_blit(strip, pixels, STRIP_NUM_PIXELS);
+			ws2812_blit(strip, led_states, STRIP_NUM_PIXELS);
 			leds_need_update_flag = 0;
 		}
 
