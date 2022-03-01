@@ -125,17 +125,17 @@ static int on_update(const struct coap_packet *response,
 		}
 		if (ret & 1<<2)
 		{
-			LOG_INF("LED1 Color: %s State: %d", led_received_changes.led1_color, led_states[1].state);
+			LOG_INF("LED1 Color: %s State: %d", led_received_changes.led1_color, led_received_changes.led1_state);
 			set_leds(1, &led_received_changes);
 		}
 		if (ret & 1<<4)
 		{
-			LOG_INF("LED2 Color: %s State: %d", led_received_changes.led2_color, led_states[2].state);
+			LOG_INF("LED2 Color: %s State: %d", led_received_changes.led2_color, led_received_changes.led2_state);
 			set_leds(2, &led_received_changes);
 		}
 		if (ret & 1<<6)
 		{
-			LOG_INF("LED3 Color: %s State: %d", led_received_changes.led3_color, led_states[3].state);
+			LOG_INF("LED3 Color: %s State: %d", led_received_changes.led3_color, led_received_changes.led3_state);
 			set_leds(3, &led_received_changes);
 		}
 		++leds_need_update_flag;
@@ -159,10 +159,10 @@ static void set_leds(uint8_t led_num, struct led_settings *ls)
 	switch(led_num)
 	{
 		//FIXME: led_states needs to be passed by reference to this function
-		case(0): l_color = ls->led0_color; l_state = ls->led0_state; led_states[0].state = ls->led0_state; break;
-		case(1): l_color = ls->led1_color; l_state = ls->led1_state; led_states[1].state = ls->led1_state;break;
-		case(2): l_color = ls->led2_color; l_state = ls->led2_state; led_states[2].state = ls->led2_state;break;
-		case(3): l_color = ls->led3_color; l_state = ls->led3_state; led_states[3].state = ls->led3_state;break;
+		case(0): l_color = ls->led0_color; l_state = ls->led0_state; break;
+		case(1): l_color = ls->led1_color; l_state = ls->led1_state; break;
+		case(2): l_color = ls->led2_color; l_state = ls->led2_state; break;
+		case(3): l_color = ls->led3_color; l_state = ls->led3_state; break;
 	}
 	switch(get_fasthash(l_color))
 	{
@@ -170,21 +170,25 @@ static void set_leds(uint8_t led_num, struct led_settings *ls)
 			LOG_INF("LED #%d is off!!!", led_num);
 			//set_pixel(led_num, colors[0], l_state);
 			led_states[led_num].color = 0;
+			led_states[led_num].state = l_state;
 			break;
 		case (115):
 			LOG_INF("LED #%d is red!!!", led_num);
 			//set_pixel(led_num, colors[1], l_state);
 			led_states[led_num].color = 1;
+			led_states[led_num].state = l_state;
 			break;
 		case (123):
 			LOG_INF("LED #%d is green!!!", led_num);
 			//set_pixel(led_num, colors[2], l_state);
 			led_states[led_num].color = 2;
+			led_states[led_num].state = l_state;
 			break;
 		case (30):
 			LOG_INF("LED #%d is blue!!!", led_num);
 			//set_pixel(led_num, colors[3], l_state);
 			led_states[led_num].color = 3;
+			led_states[led_num].state = l_state;
 			break;
 	}
 }
@@ -296,60 +300,32 @@ static void golioth_on_message(struct golioth_client *client,
 void button_pressed(const struct device *dev, struct gpio_callback *cb,
 		    uint32_t pins)
 {
-	if (pins & BIT(button0.pin)) {
-		if (led_states[0].state < 0) return;
-		int8_t toggle_val = led_states[0].state > 0 ? 0 : 1;
-		led_states[0].state = toggle_val;
-		++leds_need_update_flag;
-		char buf[2] = { '0'+toggle_val, 0 };
-		int err = golioth_lightdb_set(client,
-				  GOLIOTH_LIGHTDB_PATH("led_settings/led0_state"),
+	uint8_t endpoint[27] = ".d/led_settings/led0_state";
+	uint8_t endpoint_idx = 19;	//Location of the number to change in the endpoint
+	/* Array to check JSON parsed valid keys */
+	uint32_t button_result[] = {
+		pins & BIT(button0.pin),
+		pins & BIT(button1.pin),
+		pins & BIT(button2.pin),
+		pins & BIT(button3.pin)
+	};
+	for (uint8_t i=0; i<4; i++) {
+		if (button_result[i] != 0)
+		{
+			LOG_INF("Button%d pressed.", i);
+			if (led_states[i].state < 0) continue; //Indicates no cloud sync yet
+			int8_t toggle_val = led_states[i].state > 0 ? 0 : 1;
+			led_states[i].state = toggle_val;
+			++leds_need_update_flag;
+			endpoint[endpoint_idx] = '0' + i;
+			char state_buf[2] = { '0'+toggle_val, 0 };
+			int err = golioth_lightdb_set(client,
+				  endpoint,
 				  COAP_CONTENT_FORMAT_TEXT_PLAIN,
-				  buf, 1);
-		if (err) {
-			LOG_WRN("Failed to update led0_state: %d", err);
-		}
-	}
-	if (pins & BIT(button1.pin)) {
-		if (led_states[1].state < 0) return;
-		int8_t toggle_val = led_states[1].state > 0 ? 0 : 1;
-		led_states[1].state = toggle_val;
-		++leds_need_update_flag;
-		char buf[2] = { '0'+toggle_val, 0 };
-		int err = golioth_lightdb_set(client,
-				  GOLIOTH_LIGHTDB_PATH("led_settings/led1_state"),
-				  COAP_CONTENT_FORMAT_TEXT_PLAIN,
-				  buf, 1);
-		if (err) {
-			LOG_WRN("Failed to update led1_state: %d", err);
-		}
-	}
-	if (pins & BIT(button2.pin)) {
-		if (led_states[2].state < 0) return;
-		int8_t toggle_val = led_states[2].state > 0 ? 0 : 1;
-		led_states[2].state = toggle_val;
-		++leds_need_update_flag;
-		char buf[2] = { '0'+toggle_val, 0 };
-		int err = golioth_lightdb_set(client,
-				  GOLIOTH_LIGHTDB_PATH("led_settings/led2_state"),
-				  COAP_CONTENT_FORMAT_TEXT_PLAIN,
-				  buf, 1);
-		if (err) {
-			LOG_WRN("Failed to update led2_state: %d", err);
-		}
-	}
-	if (pins & BIT(button3.pin)) {
-		if (led_states[3].state < 0) return;
-		int8_t toggle_val = led_states[3].state > 0 ? 0 : 1;
-		led_states[3].state = toggle_val;
-		++leds_need_update_flag;
-		char buf[2] = { '0'+toggle_val, 0 };
-		int err = golioth_lightdb_set(client,
-				  GOLIOTH_LIGHTDB_PATH("led_settings/led3_state"),
-				  COAP_CONTENT_FORMAT_TEXT_PLAIN,
-				  buf, 1);
-		if (err) {
-			LOG_WRN("Failed to update led3_state: %d", err);
+				  state_buf, 1);
+			if (err) {
+				LOG_WRN("Failed to update led%d_state: %d", i, err);
+			}
 		}
 	}
 }

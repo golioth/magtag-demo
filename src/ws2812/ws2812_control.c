@@ -41,7 +41,7 @@ void ws2812_blit(const struct device *dev, struct led_color_state *states, uint8
 	struct led_rgb buffer[pix_count];
 	for (uint8_t i=0; i<pix_count; i++)
 	{
-        if (states[i].state < 0)
+        if (states[i].state <= 0)
         {
 		    memcpy(&buffer[i], &colors[0], sizeof(struct led_rgb));
         }
