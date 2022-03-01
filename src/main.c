@@ -363,8 +363,10 @@ void main(void)
 	ws2812_init();
 
 	clear_pixels();
-	set_pixel(1, colors[3], 1);
-	led_strip_update_rgb(strip, pixels, STRIP_NUM_PIXELS);
+	/* Set two blue pixels to show until we connect to Golioth */
+	set_pixel(led_states, 1, 3, -1);
+	set_pixel(led_states, 2, 3, -1);
+	ws2812_blit(strip, led_states, STRIP_NUM_PIXELS);
 
 	/* buttons */
 	gpio_pin_configure_dt(&button0, GPIO_INPUT);

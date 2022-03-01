@@ -31,7 +31,7 @@ static const struct device *strip = DEVICE_DT_GET(STRIP_NODE);
 
 /* ws2812 prototypes*/
 void clear_pixels(void);
-void set_pixel(uint8_t pixel_n, const struct led_rgb color, int8_t state);
+void set_pixel(struct led_color_state *states, uint8_t pixel_n, uint8_t color_n, int8_t state);
 void ws2812_blit(const struct device *dev, struct led_color_state *states, uint8_t pix_count);
 void ws2812_init(void);
 

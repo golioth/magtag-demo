@@ -30,10 +30,13 @@ void clear_pixels(void)
  * @param pixel_n   the pixel number
  * @param color     the color_rgb value
  */
-void set_pixel(uint8_t pixel_n, const struct led_rgb color, int8_t state)
+void set_pixel(struct led_color_state *states, uint8_t pixel_n, uint8_t color_n, int8_t state)
 {
     if (pixel_n >= STRIP_NUM_PIXELS) return;
-	memcpy(&pixels[pixel_n], &color, sizeof(struct led_rgb));
+    if (color_n >= sizeof(colors)) return;
+	//memcpy(&pixels[pixel_n], &color, sizeof(struct led_rgb));
+    states[pixel_n].color = color_n;
+    states[pixel_n].state = state;
 }
 
 void ws2812_blit(const struct device *dev, struct led_color_state *states, uint8_t pix_count)
@@ -41,7 +44,7 @@ void ws2812_blit(const struct device *dev, struct led_color_state *states, uint8
 	struct led_rgb buffer[pix_count];
 	for (uint8_t i=0; i<pix_count; i++)
 	{
-        if (states[i].state <= 0)
+        if (states[i].state == 0)
         {
 		    memcpy(&buffer[i], &colors[0], sizeof(struct led_rgb));
         }
