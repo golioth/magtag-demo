@@ -66,9 +66,6 @@ static const struct json_obj_descr led_settings_descr[] = {
 struct led_settings led_received_changes;
 uint8_t leds_need_update_flag;
 
-/* prototypes */
-static void set_leds(uint8_t led_num, const char * l_color, int8_t l_state);
-
 /*
  * This function is registed to be called when the data
  * stored at `/observed` changes.
@@ -132,43 +129,6 @@ static int on_update(const struct coap_packet *response,
 	}
 
 	return 0;
-}
-
-static uint16_t get_fasthash(const char *word)
-{
-	uint16_t sum = 0;
-	for (uint8_t i=0; i<strlen(word); i++) {
-		sum ^= (uint16_t) word[i];
-	}
-	return sum;
-}
-
-static void set_leds(uint8_t led_num, const char * l_color, int8_t l_state)
-{
-	uint8_t color;
-	switch(get_fasthash(l_color))
-	{
-		case (111):
-			LOG_INF("LED #%d is black!!!", led_num);
-			color = 0;
-			break;
-		case (115):
-			LOG_INF("LED #%d is red!!!", led_num);
-			color = 1;
-			break;
-		case (123):
-			LOG_INF("LED #%d is green!!!", led_num);
-			color = 2;
-			break;
-		case (30):
-			LOG_INF("LED #%d is blue!!!", led_num);
-			color = 3;
-			break;
-		default:
-			/* not a valid color name */
-			return;
-	}
-	set_pixel(led_states, led_num, color, l_state);
 }
 
 /*

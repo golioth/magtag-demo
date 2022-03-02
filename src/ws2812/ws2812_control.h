@@ -41,5 +41,6 @@ void set_pixel(struct led_color_state *states, uint8_t pixel_n, uint8_t color_n,
 void ws2812_blit(const struct device *dev, struct led_color_state *states, uint8_t pix_count);
 void ws2812_init(void);
 void leds_immediate(uint8_t led3, uint8_t led2, uint8_t led1, uint8_t led0);
+void set_leds(uint8_t led_num, const char * l_color, int8_t l_state);
 
 #endif
