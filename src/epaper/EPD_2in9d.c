@@ -406,6 +406,7 @@ void EPD_2IN9D_LinePart(uint8_t *str, uint8_t str_len, uint8_t line, uint16_t co
     /* send data */
     EPD_2IN9D_SendCommand(0x13);
 
+    //FIXME: column centering a looping only works for full-width
     uint8_t send_col;
     uint8_t letter;
     uint8_t column = 0;
@@ -439,6 +440,83 @@ void EPD_2IN9D_LinePart(uint8_t *str, uint8_t str_len, uint8_t line, uint16_t co
         }
     }
     EPD_2IN9D_SendData(0xff); //Unused column
+
+    /* Set partial refresh */    
+    EPD_2IN9D_TurnOnDisplay();
+}
+
+void double_flip_invert(uint8_t orig_column, uint8_t return_cols[2]) {
+    // Double the pixesl, the flip endianness and invert
+    uint8_t upper_column = 0;
+    uint8_t lower_column = 0;
+    for (uint8_t i=0; i<4; i++)
+    {
+        if (orig_column & (1<<(i+4))) upper_column |= 0b11 << (i*2);
+        if (orig_column & (1<<(i))) lower_column |= 0b11 << (i*2);
+    }
+    return_cols[0] = flip_invert(upper_column);
+    return_cols[1] = flip_invert(lower_column);
+}
+
+void EPD_2IN9D_DoubleLinePart(uint8_t *str, uint8_t str_len, uint8_t line, uint16_t col_start, uint16_t col_end)
+{
+    if (line > 7) return;
+    if (col_end > 296) return;
+    /* Set partial Windows */
+    EPD_2IN9D_SetPartReg();
+    EPD_2IN9D_SendCommand(0x91);		//This command makes the display enter partial mode
+    EPD_2IN9D_SendCommand(0x90);		//resolution setting
+    EPD_2IN9D_SendData(line*16);           //x-start
+    EPD_2IN9D_SendData((line*16)+16 - 1);       //x-end
+
+    EPD_2IN9D_SendData(0);
+    EPD_2IN9D_SendData(col_start);     //y-start
+    EPD_2IN9D_SendData(col_end / 256);
+    EPD_2IN9D_SendData(col_end % 256 - 1);  //y-end
+    EPD_2IN9D_SendData(0x28);
+    
+    /* send data */
+    EPD_2IN9D_SendCommand(0x13);
+
+    //FIXME: column centering a looping only works for full-width
+    uint8_t send_col[2] = {0};
+    uint8_t letter;
+    uint8_t column = 0;
+    uint8_t str_idx = 23;
+    for (uint8_t i=0; i<8; i++) EPD_2IN9D_SendData(0xff); //Unused columns
+    for (UWORD j = 0; j < 144; j++) {
+        for (UWORD i = 0; i < 1; i++) {
+            if (column == 0 || str_idx >= str_len)
+            {
+                send_col[0] = 0xff;
+                send_col[1] = 0xff;
+            }
+            else
+            {
+                if (str[str_idx] < 32 || str[str_idx] > 127)
+                {
+                    //Out of bounds, print a space
+                    letter = 0;
+                }
+                else
+                {
+                    letter = str[str_idx] - 32;
+                }
+                uint8_t letter_column = font5x8[(5*letter)+(5-column)];
+                double_flip_invert(letter_column, send_col);
+            }
+            EPD_2IN9D_SendData(send_col[1]);
+            EPD_2IN9D_SendData(send_col[0]);
+            EPD_2IN9D_SendData(send_col[1]);
+            EPD_2IN9D_SendData(send_col[0]);
+            if (++column > 5)
+            {
+                column = 0;
+                --str_idx;
+            }
+        }
+    }
+    for (uint8_t i=0; i<8; i++) EPD_2IN9D_SendData(0xff); //Unused columns
 
     /* Set partial refresh */    
     EPD_2IN9D_TurnOnDisplay();
