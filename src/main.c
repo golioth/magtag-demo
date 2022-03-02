@@ -35,6 +35,7 @@ const uint8_t *str_p[] = {demostr0, demostr1, demostr2, demostr3, demostr4, demo
 
 /* buttons*/
 #include "buttons/buttons.h"
+volatile uint64_t debounce = 0;
 
 /* Golioth */
 static struct golioth_client *client = GOLIOTH_SYSTEM_CLIENT_GET();
@@ -191,6 +192,17 @@ static void golioth_on_message(struct golioth_client *client,
 void button_pressed(const struct device *dev, struct gpio_callback *cb,
 		    uint32_t pins)
 {
+	if (debounce > k_uptime_ticks())
+	{
+		/* too soon to register another button press */
+		return;
+	}
+	else
+	{
+		/* register the timeout value for the next press */
+		debounce = sys_clock_timeout_end_calc(K_MSEC(100));
+	}
+
 	/* Array to check which button was pressed */
 	uint32_t button_result[] = {
 		pins & BIT(button0.pin),
@@ -198,6 +210,8 @@ void button_pressed(const struct device *dev, struct gpio_callback *cb,
 		pins & BIT(button2.pin),
 		pins & BIT(button3.pin)
 	};
+
+	/* Process each button press that was detected */
 	for (uint8_t i=0; i<4; i++) {
 		if (button_result[i] != 0)
 		{
@@ -271,10 +285,9 @@ void main(void)
 
 		if (++epaper_partial_demo_loopcount >= 5 && epaper_partial_demo_linecount < 8)
 		{
-			epaper_WriteDoubleLine(
+			epaper_autowrite(
 				(void *)str_p[epaper_partial_demo_linecount],
-				strlen(str_p[epaper_partial_demo_linecount]),
-				epaper_partial_demo_linecount
+				strlen(str_p[epaper_partial_demo_linecount])
 				);
 			++epaper_partial_demo_linecount;
 		}
