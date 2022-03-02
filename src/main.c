@@ -81,7 +81,7 @@ void main(void)
 		}
 		else if (counter < 7)
 		{
-			/* Write message on epaper for user feedback */
+			/* Write first 7 messages on epaper for user feedback */
 			uint8_t sbuf[24];
 			snprintk(sbuf, sizeof(sbuf) - 1, "Sending hello! %d", counter);
 			epaper_WriteDoubleLine(sbuf, strlen(sbuf), counter+1);
