@@ -133,7 +133,7 @@ static void golioth_on_connect(struct golioth_client *client)
 	 * the value doesn't change.
 	 */
 	err = golioth_lightdb_observe(client,
-				      GOLIOTH_LIGHTDB_PATH("led_settings"),
+				      GOLIOTH_LIGHTDB_PATH("magtag"),
 				      COAP_CONTENT_FORMAT_TEXT_PLAIN,
 				      observe_reply, on_update);
 
@@ -191,8 +191,6 @@ static void golioth_on_message(struct golioth_client *client,
 void button_pressed(const struct device *dev, struct gpio_callback *cb,
 		    uint32_t pins)
 {
-	uint8_t endpoint[27] = ".d/led_settings/led0_state";
-	uint8_t endpoint_idx = 19;	//Location of the number to change in the endpoint
 	/* Array to check which button was pressed */
 	uint32_t button_result[] = {
 		pins & BIT(button0.pin),
@@ -208,8 +206,14 @@ void button_pressed(const struct device *dev, struct gpio_callback *cb,
 			int8_t toggle_val = led_states[i].state > 0 ? 0 : 1;
 			led_states[i].state = toggle_val;
 			++leds_need_update_flag;
-			endpoint[endpoint_idx] = '0' + i;
+
+			/* Build the endpoint with the correct LED number */
+			uint8_t endpoint[32];
+			snprintk(endpoint, sizeof(endpoint)-1, ".d/magtag/led%d_state",	i);
+			/* convert the toggle_val digit into a string */
 			char state_buf[2] = { '0'+toggle_val, 0 };
+
+			/* Update the LightDB state endpoint on the Golioth Cloud */
 			int err = golioth_lightdb_set(client,
 				  endpoint,
 				  COAP_CONTENT_FORMAT_TEXT_PLAIN,
