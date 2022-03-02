@@ -19,9 +19,7 @@ LOG_MODULE_REGISTER(golioth_magtag, LOG_LEVEL_DBG);
 #include "accelerometer/accel.h"
 
 /* ePaper */
-#include "epaper/DEV_Config.h"
 #include "epaper/EPD_2in9d.h"
-#include "epaper/ImageData.h"
 const uint8_t demostr0[] = "I must not fear.";
 const uint8_t demostr1[] = "Fear is the mind-killer.";
 const uint8_t demostr2[] = "Fear is the little-death that brings total obliteration.";
@@ -315,17 +313,7 @@ void main(void)
 	buttons_init(button_pressed);
 
 	/* ePaper */
-	LOG_INF("Setup ePaper pins");
-  	DEV_Module_Init();
-
-    LOG_INF("ePaper Init and Clear");
-    EPD_2IN9D_Init();
-    EPD_2IN9D_Clear();
-	k_sleep(K_MSEC(500));
-
-	LOG_INF("Show Golioth logo");
-	EPD_2IN9D_Display((void *)gImage_2in9); /* cast because function is not expecting a CONST array) */
-    EPD_2IN9D_Sleep(); /* always sleep the ePaper display to avoid damaging it */
+	epaper_init();
 
 	uint8_t epaper_partial_demo_loopcount = 0;
 	uint8_t epaper_partial_demo_linecount = 0;
@@ -343,12 +331,10 @@ void main(void)
 
 		if (++epaper_partial_demo_loopcount >= 5 && epaper_partial_demo_linecount < 8)
 		{
-			EPD_2IN9D_DoubleLinePart(
+			epaper_WriteDoubleLine(
 				(void *)str_p[epaper_partial_demo_linecount],
 				strlen(str_p[epaper_partial_demo_linecount]),
-				epaper_partial_demo_linecount,
-				0,
-				296
+				epaper_partial_demo_linecount
 				);
 			++epaper_partial_demo_linecount;
 		}

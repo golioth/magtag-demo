@@ -54,6 +54,9 @@
 #include "EPD_2in9d.h"
 #include "Debug.h"
 #include "font5x8.h"
+#include "ImageData.h"
+#include <logging/log.h>
+LOG_MODULE_REGISTER(golioth_epaper, LOG_LEVEL_DBG);
 
 /**
  * partial screen update LUT
@@ -385,11 +388,10 @@ uint8_t flip_invert(uint8_t column) {
  * @param str           string to be written to display
  * @param str_len       numer of characters in string
  * @param line          0..16
- * @param col_start     0..295
- * @param col_end       0..295
  */
-void EPD_2IN9D_LinePart(uint8_t *str, uint8_t str_len, uint8_t line, uint16_t col_start, uint16_t col_end)
+void epaper_WriteLine(uint8_t *str, uint8_t str_len, uint8_t line)
 {
+    if (line > 15) return;
     /* Set partial Windows */
     EPD_2IN9D_Init();
     EPD_2IN9D_SetPartReg();
@@ -399,9 +401,9 @@ void EPD_2IN9D_LinePart(uint8_t *str, uint8_t str_len, uint8_t line, uint16_t co
     EPD_2IN9D_SendData((line*8)+8 - 1);       //x-end
 
     EPD_2IN9D_SendData(0);
-    EPD_2IN9D_SendData(col_start);     //y-start
-    EPD_2IN9D_SendData(col_end / 256);
-    EPD_2IN9D_SendData(col_end % 256 - 1);  //y-end
+    EPD_2IN9D_SendData(0);     //y-start
+    EPD_2IN9D_SendData(296 / 256);
+    EPD_2IN9D_SendData(296 % 256 - 1);  //y-end
     EPD_2IN9D_SendData(0x28);
     
     /* send data */
@@ -460,10 +462,17 @@ void double_flip_invert(uint8_t orig_column, uint8_t return_cols[2]) {
     return_cols[1] = flip_invert(lower_column);
 }
 
-void EPD_2IN9D_DoubleLinePart(uint8_t *str, uint8_t str_len, uint8_t line, uint16_t col_start, uint16_t col_end)
+/**
+ * @brief Use partial refresh to show string on one double-sized line of the
+ * display
+ *
+ * @param str           string to be written to display
+ * @param str_len       numer of characters in string
+ * @param line          0..16 
+ */
+void epaper_WriteDoubleLine(uint8_t *str, uint8_t str_len, uint8_t line)
 {
     if (line > 7) return;
-    if (col_end > 296) return;
     /* Set partial Windows */
     EPD_2IN9D_Init();
     EPD_2IN9D_SetPartReg();
@@ -473,9 +482,9 @@ void EPD_2IN9D_DoubleLinePart(uint8_t *str, uint8_t str_len, uint8_t line, uint1
     EPD_2IN9D_SendData((line*16)+16 - 1);       //x-end
 
     EPD_2IN9D_SendData(0);
-    EPD_2IN9D_SendData(col_start);     //y-start
-    EPD_2IN9D_SendData(col_end / 256);
-    EPD_2IN9D_SendData(col_end % 256 - 1);  //y-end
+    EPD_2IN9D_SendData(0);     //y-start
+    EPD_2IN9D_SendData(296 / 256);
+    EPD_2IN9D_SendData(296 % 256 - 1);  //y-end
     EPD_2IN9D_SendData(0x28);
     
     /* send data */
@@ -524,6 +533,33 @@ void EPD_2IN9D_DoubleLinePart(uint8_t *str, uint8_t str_len, uint8_t line, uint1
     /* Set partial refresh */    
     EPD_2IN9D_TurnOnDisplay();
     EPD_2IN9D_Sleep();
+}
+
+/**
+ * @brief Clear the displays
+ *
+ * This handles waking up the display, performing a full clear, and putting it
+ * back to sleep
+ *
+ */
+void epaper_FullClear(void) {
+    EPD_2IN9D_Init();
+    EPD_2IN9D_Clear();
+    EPD_2IN9D_Sleep();
+}
+
+void epaper_init(void) {
+    LOG_INF("Setup ePaper pins");
+  	DEV_Module_Init();
+
+    LOG_INF("ePaper Init and Clear");
+    EPD_2IN9D_Init();
+    EPD_2IN9D_Clear();
+	k_sleep(K_MSEC(500));
+
+	LOG_INF("Show Golioth logo");
+	EPD_2IN9D_Display((void *)gImage_2in9); /* cast because function is not expecting a CONST array) */
+    EPD_2IN9D_Sleep(); /* always sleep the ePaper display to avoid damaging it */
 }
 
 
