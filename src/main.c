@@ -4,21 +4,20 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/* Golioth */
+/* Logging */
+#include <stdlib.h>
 #include <logging/log.h>
 LOG_MODULE_REGISTER(golioth_magtag, LOG_LEVEL_DBG);
+
+/* MagTag specific hardware includes */
+#include "epaper/EPD_2in9d.h"
+#include "epaper/ImageData.h"
+#include "ws2812/ws2812_control.h"
+
+/* Golioth platform includes */
 #include <net/coap.h>
 #include <net/golioth/system_client.h>
 #include <net/golioth/wifi.h>
-
-#include <stdlib.h>
-
-/* ePaper */
-#include "epaper/EPD_2in9d.h"
-#include "epaper/ImageData.h"
-
-/* ws2812 */
-#include "ws2812/ws2812_control.h"
 
 static struct golioth_client *client = GOLIOTH_SYSTEM_CLIENT_GET();
 
@@ -54,16 +53,16 @@ void main(void)
 	client->on_message = golioth_on_message;
 	golioth_system_client_start();
 
-	/* Init leds and set two blue pixels to show until we connect to Golioth */
-	ws2812_init();
-	leds_immediate(BLACK, BLUE, BLUE, BLACK);
 
-	/* ePaper */
+	/* Initialize MagTag hardware */
+	ws2812_init();
+	/* show two blue pixels to show until we connect to Golioth */
+	leds_immediate(BLACK, BLUE, BLUE, BLACK);
 	epaper_init();
 
+	/* wait until we've connected to golioth */
 	while (golioth_ping(client) != 0)
 	{
-		/* wait until we've connected to golioth */
 		k_msleep(1000);
 	}
 	/* turn LEDs green to indicate connection */
@@ -74,14 +73,15 @@ void main(void)
 	int counter = 0;
 	int err;
 	while (true) {
+		/* Send hello message to the Golioth Cloud */
 		LOG_INF("Sending hello! %d", counter);
-
 		err = golioth_send_hello(client);
 		if (err) {
 			LOG_WRN("Failed to send hello!");
 		}
 		else if (counter < 7)
 		{
+			/* Write message on epaper for user feedback */
 			uint8_t sbuf[24];
 			snprintk(sbuf, sizeof(sbuf) - 1, "Sending hello! %d", counter);
 			epaper_WriteDoubleLine(sbuf, strlen(sbuf), counter+1);
