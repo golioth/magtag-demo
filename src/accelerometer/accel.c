@@ -6,7 +6,7 @@ struct device *sensor;
 
 void accelerometer_init(void)
 {
-    sensor = DEVICE_DT_GET_ANY(st_lis2dh);
+    sensor = (void *)DEVICE_DT_GET_ANY(st_lis2dh);
 	if (sensor == NULL) {
 		LOG_ERR("No device found");
 		return;
