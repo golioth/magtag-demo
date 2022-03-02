@@ -473,6 +473,7 @@ void double_flip_invert(uint8_t orig_column, uint8_t return_cols[2]) {
 void epaper_WriteDoubleLine(uint8_t *str, uint8_t str_len, uint8_t line)
 {
     if (line > 7) return;
+    EPD_2IN9D_Init();
     /* Set partial Windows */
     EPD_2IN9D_Init();
     EPD_2IN9D_SetPartReg();
