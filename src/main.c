@@ -343,7 +343,6 @@ void main(void)
 
 		if (++epaper_partial_demo_loopcount >= 5 && epaper_partial_demo_linecount < 8)
 		{
-			EPD_2IN9D_Init();
 			EPD_2IN9D_DoubleLinePart(
 				(void *)str_p[epaper_partial_demo_linecount],
 				strlen(str_p[epaper_partial_demo_linecount]),
@@ -351,7 +350,6 @@ void main(void)
 				0,
 				296
 				);
-			EPD_2IN9D_Sleep();
 			++epaper_partial_demo_linecount;
 		}
 

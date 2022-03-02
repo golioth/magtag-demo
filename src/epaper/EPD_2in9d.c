@@ -391,6 +391,7 @@ uint8_t flip_invert(uint8_t column) {
 void EPD_2IN9D_LinePart(uint8_t *str, uint8_t str_len, uint8_t line, uint16_t col_start, uint16_t col_end)
 {
     /* Set partial Windows */
+    EPD_2IN9D_Init();
     EPD_2IN9D_SetPartReg();
     EPD_2IN9D_SendCommand(0x91);		//This command makes the display enter partial mode
     EPD_2IN9D_SendCommand(0x90);		//resolution setting
@@ -443,6 +444,7 @@ void EPD_2IN9D_LinePart(uint8_t *str, uint8_t str_len, uint8_t line, uint16_t co
 
     /* Set partial refresh */    
     EPD_2IN9D_TurnOnDisplay();
+    EPD_2IN9D_Sleep();
 }
 
 void double_flip_invert(uint8_t orig_column, uint8_t return_cols[2]) {
@@ -463,6 +465,7 @@ void EPD_2IN9D_DoubleLinePart(uint8_t *str, uint8_t str_len, uint8_t line, uint1
     if (line > 7) return;
     if (col_end > 296) return;
     /* Set partial Windows */
+    EPD_2IN9D_Init();
     EPD_2IN9D_SetPartReg();
     EPD_2IN9D_SendCommand(0x91);		//This command makes the display enter partial mode
     EPD_2IN9D_SendCommand(0x90);		//resolution setting
@@ -520,6 +523,7 @@ void EPD_2IN9D_DoubleLinePart(uint8_t *str, uint8_t str_len, uint8_t line, uint1
 
     /* Set partial refresh */    
     EPD_2IN9D_TurnOnDisplay();
+    EPD_2IN9D_Sleep();
 }
 
 
