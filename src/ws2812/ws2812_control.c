@@ -83,3 +83,22 @@ void ws2812_init(void) {
         led_states[i].state = -1;
     }
 }
+
+/**
+ * @brief Immediately show these colors on the LEDs
+ *
+ * This sets each LED color (use defines like RED, BLUE) and assigns their
+ * toggle value to -1 which overrides any previously set on/off value
+ *
+ * @param led3 
+ * @param led2 
+ * @param led1 
+ * @param led0 
+ */
+void leds_immediate(uint8_t led3, uint8_t led2, uint8_t led1, uint8_t led0) {
+	if (led0 < ARRAY_SIZE(colors)) set_pixel(led_states, 0, led0, -1);
+	if (led1 < ARRAY_SIZE(colors)) set_pixel(led_states, 1, led1, -1);
+	if (led2 < ARRAY_SIZE(colors)) set_pixel(led_states, 2, led2, -1);
+	if (led3 < ARRAY_SIZE(colors)) set_pixel(led_states, 3, led3, -1);
+	ws2812_blit(strip, led_states, STRIP_NUM_PIXELS);
+}

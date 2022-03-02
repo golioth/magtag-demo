@@ -301,13 +301,9 @@ void main(void)
 	client->on_message = golioth_on_message;
 	golioth_system_client_start();
 
+	/* Init leds and set two blue pixels to show until we connect to Golioth */
 	ws2812_init();
-
-	clear_pixels();
-	/* Set two blue pixels to show until we connect to Golioth */
-	set_pixel(led_states, 1, 3, -1);
-	set_pixel(led_states, 2, 3, -1);
-	ws2812_blit(strip, led_states, STRIP_NUM_PIXELS);
+	leds_immediate(BLACK, BLUE, BLUE, BLACK);
 
 	/* buttons */
 	buttons_init(button_pressed);

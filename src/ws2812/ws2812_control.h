@@ -19,6 +19,12 @@ static const struct led_rgb colors[] = {
 	RGB(0x00, 0x00, 0x0F), /* blue */
 };
 
+/* Color name definitions match colors[] index */
+#define BLACK	0
+#define RED		1
+#define GREEN	2
+#define BLUE	3
+
 struct led_color_state {
   uint8_t color;
   int8_t state;  
@@ -34,5 +40,6 @@ void clear_pixels(void);
 void set_pixel(struct led_color_state *states, uint8_t pixel_n, uint8_t color_n, int8_t state);
 void ws2812_blit(const struct device *dev, struct led_color_state *states, uint8_t pix_count);
 void ws2812_init(void);
+void leds_immediate(uint8_t led3, uint8_t led2, uint8_t led1, uint8_t led0);
 
 #endif
