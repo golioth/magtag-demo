@@ -75,7 +75,7 @@ void ws2812_init(void) {
 	#define SPI_D_POL 19
 	uint32_t* myreg = (uint32_t*)(DT_REG_ADDR(DT_PARENT(DT_ALIAS(led_strip)))+SPI_CTRL_REG);
 	*myreg &= ~(1<<SPI_D_POL);
-	LOG_ERR("Fixing ESP32s2 Register %p Value: 0x%x", myreg, *myreg);
+	LOG_DBG("Fixing ESP32s2 Register %p Value: 0x%x", myreg, *myreg);
 	#endif
 
     for (uint8_t i=0; i<STRIP_NUM_PIXELS; i++) {
