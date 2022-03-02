@@ -19,6 +19,15 @@ Resources
 Build instructions
 ******************
 
+Clone this repository into your Golioth folder within the Zephyr install directory
+
+**NOTE:** Your zephyr location may be different than below, check where `zephyrproject` has been installed.
+
+.. code-block::
+
+   ~/zephyrproject/modules/lib/golioth/samples
+   git clone git@github.com:golioth/magtag-demo.git
+
 Create a credentials file to use from commandline (wifi and golioth):
 
 .. code-block::
@@ -32,12 +41,12 @@ Create a credentials file to use from commandline (wifi and golioth):
 Build
 =====
 
-``west build -b esp32s2_saola samples/magtag/magtag-demo/ -D OVERLAY_CONFIG=~/Desktop/esp32-devboard-one-golioth.conf``
+``west build -b esp32s2_saola samples/magtag-demo/ -D OVERLAY_CONFIG=<LOCATION OF CONF FILE WITH CREDENTIALS> -p``
 
 Build for development server:
 =============================
 
-``west build -b esp32s2_saola samples/magtag/magtag-hello/ -D OVERLAY_CONFIG=~/Desktop/esp32-devboard-one-devserver.conf -D CONFIG_GOLIOTH_SYSTEM_SERVER_HOST=\"coap.golioth.net\" -p``
+``west build -b esp32s2_saola samples/magtag-hello/ -D OVERLAY_CONFIG=<LOCATION OF CONF FILE WITH CREDENTIALS> -D CONFIG_GOLIOTH_SYSTEM_SERVER_HOST=\"coap.golioth.net\" -p``
 
 Flash
 =====
