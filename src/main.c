@@ -143,8 +143,7 @@ static void golioth_on_connect(struct golioth_client *client)
 	}
 }
 
-
-static void record_accelerometer(const struct device *sensor)
+static int record_accelerometer(const struct device *sensor)
 {
 	struct sensor_value accel[3];
 	fetch_and_display(sensor, accel);
@@ -160,8 +159,9 @@ static void record_accelerometer(const struct device *sensor)
 				COAP_CONTENT_FORMAT_TEXT_PLAIN,
 				str, strlen(str));
 	if (err) {
-		LOG_WRN("Failed to update led0_state: %d", err);
+		return err;
 	}
+	return 0;
 }
 
 /*
@@ -272,10 +272,14 @@ void main(void)
 	uint8_t epaper_partial_demo_loopcount = 0;
 	uint8_t epaper_partial_demo_linecount = 0;
 
+	int err;
 	while (true) {
 		if (++lis3dh_loopcount >= 50) {
 			lis3dh_loopcount = 0;
-			record_accelerometer(sensor);
+			err = record_accelerometer(sensor);
+			if (err) {
+				LOG_WRN("Failed to send accel data to LightDB stream: %d", err);
+			}
 		}
 
 		if (leds_need_update_flag) {
