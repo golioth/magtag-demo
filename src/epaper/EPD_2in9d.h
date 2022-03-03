@@ -69,5 +69,6 @@ void epaper_WriteLine(uint8_t *str, uint8_t str_len, uint8_t line);
 void epaper_WriteDoubleLine(uint8_t *str, uint8_t str_len, uint8_t line);
 void epaper_FullClear(void);
 void epaper_init(void);
+void epaper_autowrite(uint8_t *str, uint8_t str_len);
 
 #endif

@@ -67,7 +67,7 @@ void main(void)
 	}
 	/* turn LEDs green to indicate connection */
 	leds_immediate(GREEN, GREEN, GREEN, GREEN);
-	epaper_WriteDoubleLine("Connected to Golioth!", 21, 0);
+	epaper_autowrite("Connected to Golioth!", 21);
 
 
 	int counter = 0;
@@ -79,14 +79,14 @@ void main(void)
 		if (err) {
 			LOG_WRN("Failed to send hello!");
 		}
-		else if (counter < 7)
+		else
 		{
-			/* Write first 7 messages on epaper for user feedback */
+			/* Write messages on epaper for user feedback */
 			uint8_t sbuf[24];
 			snprintk(sbuf, sizeof(sbuf) - 1, "Sending hello! %d", counter);
-			epaper_WriteDoubleLine(sbuf, strlen(sbuf), counter+1);
+			epaper_autowrite(sbuf, strlen(sbuf));
 		}
 		++counter;
-		k_sleep(K_SECONDS(5));
+		k_sleep(K_SECONDS(1));
 	}
 }

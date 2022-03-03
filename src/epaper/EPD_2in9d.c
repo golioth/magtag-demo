@@ -366,6 +366,13 @@ void EPD_2IN9D_DisplayPart(UBYTE *Image)
     EPD_2IN9D_TurnOnDisplay();
 }
 
+/**
+ * @brief Flip endianness of input and invert the value to match the needs of
+ * the display
+ *
+ * @param column    Font column input
+ * @return uint8_t  Flipped and inverted column
+ */
 uint8_t flip_invert(uint8_t column) {
     // Flip endianness and invert
     uint8_t ret_column = 0;
@@ -449,6 +456,13 @@ void epaper_WriteLine(uint8_t *str, uint8_t str_len, uint8_t line)
     EPD_2IN9D_Sleep();
 }
 
+/**
+ * @brief Flip endianness of input, double each pixel to enlarge the font, and
+ * invert the value to match the needs of the display
+ *
+ * @param orig_column   Font column input
+ * @param return_cols   Two-byte array to store the results
+ */
 void double_flip_invert(uint8_t orig_column, uint8_t return_cols[2]) {
     // Double the pixesl, the flip endianness and invert
     uint8_t upper_column = 0;
@@ -460,6 +474,66 @@ void double_flip_invert(uint8_t orig_column, uint8_t return_cols[2]) {
     }
     return_cols[0] = flip_invert(upper_column);
     return_cols[1] = flip_invert(lower_column);
+}
+
+/**
+ * @brief Write data for double-height text to display
+ *
+ * Tihs can be used for both partial and full writes.
+ *
+ * @param str       String to display
+ * @param str_len   Length of string
+ * @param full      True if called by a full refresh, false for a partial
+ * refresh
+ */
+static void EPD_2IN9D_SendDoubleColumn(uint8_t *str, uint8_t str_len, bool full)
+{
+    uint8_t send_col[2] = {0};
+    uint8_t letter;
+    uint8_t column = 0;
+    uint8_t str_idx = 23;
+    uint8_t vamp_count = full? 64:8;
+    for (uint8_t i=0; i<vamp_count; i++) EPD_2IN9D_SendData(0xff); //Unused columns
+    for (UWORD j = 0; j < 144; j++) {
+        for (UWORD i = 0; i < 1; i++) {
+            if (column == 0 || str_idx >= str_len)
+            {
+                send_col[0] = 0xff;
+                send_col[1] = 0xff;
+            }
+            else
+            {
+                if (str[str_idx] < 32 || str[str_idx] > 127)
+                {
+                    //Out of bounds, print a space
+                    letter = 0;
+                }
+                else
+                {
+                    letter = str[str_idx] - 32;
+                }
+                uint8_t letter_column = font5x8[(5*letter)+(5-column)];
+                double_flip_invert(letter_column, send_col);
+            }
+
+            for (uint8_t i=0; i<2; i++)
+            {
+                EPD_2IN9D_SendData(send_col[1]);
+                EPD_2IN9D_SendData(send_col[0]);
+                if (full)
+                {
+                    for (uint8_t j=0; j<14; j++) EPD_2IN9D_SendData(0xff); //Unused columns
+                }
+            }
+
+            if (++column > 5)
+            {
+                column = 0;
+                --str_idx;
+            }
+        }
+    }
+    for (uint8_t i=0; i<vamp_count; i++) EPD_2IN9D_SendData(0xff); //Unused columns
 }
 
 /**
@@ -492,46 +566,39 @@ void epaper_WriteDoubleLine(uint8_t *str, uint8_t str_len, uint8_t line)
     EPD_2IN9D_SendCommand(0x13);
 
     //FIXME: column centering a looping only works for full-width
-    uint8_t send_col[2] = {0};
-    uint8_t letter;
-    uint8_t column = 0;
-    uint8_t str_idx = 23;
-    for (uint8_t i=0; i<8; i++) EPD_2IN9D_SendData(0xff); //Unused columns
-    for (UWORD j = 0; j < 144; j++) {
-        for (UWORD i = 0; i < 1; i++) {
-            if (column == 0 || str_idx >= str_len)
-            {
-                send_col[0] = 0xff;
-                send_col[1] = 0xff;
-            }
-            else
-            {
-                if (str[str_idx] < 32 || str[str_idx] > 127)
-                {
-                    //Out of bounds, print a space
-                    letter = 0;
-                }
-                else
-                {
-                    letter = str[str_idx] - 32;
-                }
-                uint8_t letter_column = font5x8[(5*letter)+(5-column)];
-                double_flip_invert(letter_column, send_col);
-            }
-            EPD_2IN9D_SendData(send_col[1]);
-            EPD_2IN9D_SendData(send_col[0]);
-            EPD_2IN9D_SendData(send_col[1]);
-            EPD_2IN9D_SendData(send_col[0]);
-            if (++column > 5)
-            {
-                column = 0;
-                --str_idx;
-            }
-        }
-    }
-    for (uint8_t i=0; i<8; i++) EPD_2IN9D_SendData(0xff); //Unused columns
+    EPD_2IN9D_SendDoubleColumn(str, str_len, false);
 
     /* Set partial refresh */    
+    EPD_2IN9D_TurnOnDisplay();
+    EPD_2IN9D_Sleep();
+}
+
+/**
+ * @brief Full display refresh of one double-height line of text
+ * 
+ * EPD_2IN9D_Init(); must be called prior to this command.
+ * 
+ * @param str       String to display
+ * @param str_len   Length of string
+ */
+void EPD_2IN9D_FullRefreshDoubleLine(uint8_t *str, uint8_t str_len)
+{
+    UWORD Width, Height;
+    Width = (EPD_2IN9D_WIDTH % 8 == 0)? (EPD_2IN9D_WIDTH / 8 ): (EPD_2IN9D_WIDTH / 8 + 1);
+    Height = EPD_2IN9D_HEIGHT;
+
+    EPD_2IN9D_SendCommand(0x10);
+    for (UWORD j = 0; j < Height; j++) {
+        for (UWORD i = 0; i < Width; i++) {
+            EPD_2IN9D_SendData(0x00);
+        }
+    }
+    // Dev_Delay_ms(10);
+
+    EPD_2IN9D_SendCommand(0x13);
+    EPD_2IN9D_SendDoubleColumn(str, str_len, true);
+    // Dev_Delay_ms(10);
+
     EPD_2IN9D_TurnOnDisplay();
     EPD_2IN9D_Sleep();
 }
@@ -549,6 +616,11 @@ void epaper_FullClear(void) {
     EPD_2IN9D_Sleep();
 }
 
+/**
+ * @brief Initialize pins used to drive the display, execute the initialization
+ * process, and display the Golioth logo
+ *
+ */
 void epaper_init(void) {
     LOG_INF("Setup ePaper pins");
   	DEV_Module_Init();
@@ -563,6 +635,29 @@ void epaper_init(void) {
     EPD_2IN9D_Sleep(); /* always sleep the ePaper display to avoid damaging it */
 }
 
+/**
+ * @brief Write double-sized lines of text to ePaper display, automatically
+ * handling screen refreshing
+ *
+ * @param str       String to write to next available line
+ * @param str_len   Length of string
+ */
+void epaper_autowrite(uint8_t *str, uint8_t str_len)
+{
+    static uint8_t line = 0;
+    if (line > 7)
+    {
+        EPD_2IN9D_Init();
+        EPD_2IN9D_Clear();
+        EPD_2IN9D_FullRefreshDoubleLine(str, str_len);
+        line = 1;
+    }
+    else
+    {
+        epaper_WriteDoubleLine(str, str_len, line);
+        ++line;
+    }
+}
 
 /******************************************************************************
 function :	Enter sleep mode
