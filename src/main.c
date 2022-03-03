@@ -13,6 +13,7 @@ LOG_MODULE_REGISTER(golioth_magtag, LOG_LEVEL_DBG);
 #include "epaper/EPD_2in9d.h"
 #include "epaper/ImageData.h"
 #include "ws2812/ws2812_control.h"
+#include "accelerometer/accel.h"
 
 /* Golioth platform includes */
 #include <net/coap.h>
@@ -20,6 +21,27 @@ LOG_MODULE_REGISTER(golioth_magtag, LOG_LEVEL_DBG);
 #include <net/golioth/wifi.h>
 
 static struct golioth_client *client = GOLIOTH_SYSTEM_CLIENT_GET();
+
+static int record_accelerometer(const struct device *sensor)
+{
+	struct sensor_value accel[3];
+	fetch_and_display(sensor, accel);
+	char str[160];
+	snprintk(str, sizeof(str) - 1,
+			"{\"x\":%f,\"y\":%f,\"z\":%f}",
+			sensor_value_to_double(&accel[0]),
+			sensor_value_to_double(&accel[1]),
+			sensor_value_to_double(&accel[2])
+			);
+	int err = golioth_lightdb_set(client,
+				GOLIOTH_LIGHTDB_STREAM_PATH("accel"),
+				COAP_CONTENT_FORMAT_TEXT_PLAIN,
+				str, strlen(str));
+	if (err) {
+		return err;
+	}
+	return 0;
+}
 
 /*
  * In the `main` function, this function is registed to be
@@ -42,7 +64,7 @@ static void golioth_on_message(struct golioth_client *client,
 
 void main(void)
 {
-	LOG_DBG("Start MagTag Hello demo");
+	LOG_DBG("Start MagTag LightDB Stream demo");
 
 	/* WiFi */
 	if (IS_ENABLED(CONFIG_GOLIOTH_SAMPLE_WIFI)) {
@@ -69,24 +91,23 @@ void main(void)
 	leds_immediate(GREEN, GREEN, GREEN, GREEN);
 	epaper_autowrite("Connected to Golioth!", 21);
 
+	/* Accelerometer */
+	accelerometer_init();
 
-	int counter = 0;
 	int err;
 	while (true) {
-		/* Send hello message to the Golioth Cloud */
-		LOG_INF("Sending hello! %d", counter);
-		err = golioth_send_hello(client);
+		/* Send accelerometer data to the Golioth Cloud */
+		LOG_INF("Sending accel data");
+
+		err = record_accelerometer(sensor);
 		if (err) {
-			LOG_WRN("Failed to send hello!");
+			LOG_WRN("Failed to accel data to LightDB stream: %d", err);
 		}
 		else
 		{
-			/* Write messages on epaper for user feedback */
-			uint8_t sbuf[24];
-			snprintk(sbuf, sizeof(sbuf) - 1, "Sending hello! %d", counter);
-			epaper_autowrite(sbuf, strlen(sbuf));
+			epaper_autowrite("Sent accel data", 16);
 		}
-		++counter;
-		k_sleep(K_SECONDS(1));
+
+		k_sleep(K_SECONDS(5));
 	}
 }
