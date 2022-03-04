@@ -87,6 +87,6 @@ void main(void)
 			epaper_autowrite(sbuf, strlen(sbuf));
 		}
 		++counter;
-		k_sleep(K_SECONDS(1));
+		k_sleep(K_SECONDS(5));
 	}
 }

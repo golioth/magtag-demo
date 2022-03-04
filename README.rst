@@ -1,5 +1,24 @@
-Golioth Demo on Adafruit MagTag
-###############################
+Golioth Developer Training: Observe
+###################################
+
+This demo sends a hello log message to the Golioth console every few seconds.
+
+.. code-block::
+
+   Sending hello! 715
+
+When first powered on, the device may show no activity for a few seconds as the
+WiFi radio is initialized. It will then illuminate the two center LEDs in blue
+while trying to establish a connection with the Golioth servers.
+
+Once a connection is established, all LEDs will turn green. Hello messages will
+begin, with a corresponding message printed on the ePaper display. Hello
+messages can be viewed in the Monitor-->Logs section of the Golioth console.
+Seeing these messages verifies that your device was able to connect to WiFi, and
+negotiate a secure connection with the Golioth servers.
+
+Hardware: Adafruit MagTag
+*************************
 
 This demonstrates how to interact with the Golioth Cloud using Zephyr on the
 `Adafruit MagTag board`_.
