@@ -1,5 +1,15 @@
-Golioth Demo on Adafruit MagTag
-###############################
+Golioth Developer Training: Stream
+###################################
+
+This demo sends accelerometer data to Golioth LightDB Stream once every five
+seconds.
+
+LightDB Stream data is recorded in the time domain. Leaving this demo running
+(and moving the board around a bit) is a good way to build up data to test
+visualizing on services compatible with Golioth's Output Streams.
+
+Hardware: Adafruit MagTag
+*************************
 
 This demonstrates how to interact with the Golioth Cloud using Zephyr on the
 `Adafruit MagTag board`_.
@@ -14,7 +24,6 @@ Resources
 * `MagTag schematic`_
 * `MagTag high-level pinout`_
 * `MagTag design files`_
-
 
 Build instructions
 ******************
