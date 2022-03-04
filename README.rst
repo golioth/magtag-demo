@@ -115,10 +115,13 @@ initialized. That process can take several seconds, at which point the two cente
 LEDs will turn blue to indicate the board is trying to establish an internet
 connection and connect with Golioth.
 
-When a connection with Golioth is achieve, all three LEDs will turn green. The
-board will then begin sending "Hello!" messages to the Golioth cloud. You should
-see this indicated on on the ePaper screen, and can confirm the messages are
-being received by visiting `the Golioth console`_.
+When a connection with Golioth is achieved, the `magtag` endpoint will be
+observed to update the color and state of the LEDs. The user may change this
+values in `the Golioth console`_. The buttons can be used to toggle the LED
+state, which will be updated in the cloud.
+
+Accelerometer data will be published to the LightDB stream every few seconds,
+and displayed on the ePaper screen.
 
 .. _Adafruit MagTag board: https://learn.adafruit.com/adafruit-magtag
 .. _MagTag purchase link: https://www.adafruit.com/magtag
