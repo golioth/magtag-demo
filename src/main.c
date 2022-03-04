@@ -24,8 +24,12 @@ static struct golioth_client *client = GOLIOTH_SYSTEM_CLIENT_GET();
 
 static int record_accelerometer(const struct device *sensor)
 {
+	/* Struct to store new sensor reading */
 	struct sensor_value accel[3];
+	/* Call sensor library to take sensor reading */
 	fetch_and_display(sensor, accel);
+
+	/* Turn sensor data into a string */
 	char str[160];
 	snprintk(str, sizeof(str) - 1,
 			"{\"x\":%f,\"y\":%f,\"z\":%f}",
@@ -33,6 +37,8 @@ static int record_accelerometer(const struct device *sensor)
 			sensor_value_to_double(&accel[1]),
 			sensor_value_to_double(&accel[2])
 			);
+
+	/* Send string to Golioth LightDB Stream */
 	int err = golioth_lightdb_set(client,
 				GOLIOTH_LIGHTDB_STREAM_PATH("accel"),
 				COAP_CONTENT_FORMAT_TEXT_PLAIN,
@@ -78,7 +84,7 @@ void main(void)
 
 	/* Initialize MagTag hardware */
 	ws2812_init();
-	/* show two blue pixels to show until we connect to Golioth */
+	/* show two blue pixels until we connect to Golioth */
 	leds_immediate(BLACK, BLUE, BLUE, BLACK);
 	epaper_init();
 
