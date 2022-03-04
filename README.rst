@@ -7,6 +7,15 @@ on your Golioth Cloud.
 * Expected LightDB state key: ``leds``
 * Valid values: 0..15
 
+You can add this structure using the ``goliothctl`` command line tool:
+
+.. code-block:: bash
+
+   # Make sure you've authenticated the CLI tool
+   goliothctl login
+   # Send JSON object to LightDB state
+   goliothctl lightdb set <device-name> /leds -b '15'
+
 The decimal number entered on the console will be used as a binary bitmask. So
 entering the number 14 is the same as binary 0b1110 and would turn the right LED
 off and the other three on.
@@ -94,10 +103,9 @@ initialized. That process can take several seconds, at which point the two cente
 LEDs will turn blue to indicate the board is trying to establish an internet
 connection and connect with Golioth.
 
-When a connection with Golioth is achieve, all three LEDs will turn green. The
-board will then begin sending "Hello!" messages to the Golioth cloud. You should
-see this indicated on on the ePaper screen, and can confirm the messages are
-being received by visiting `the Golioth console`_.
+When a connection with Golioth is achieved, all three LEDs will turn green until
+the ``/leds`` endpoint data is received from Golioth. The user may change these
+values `the Golioth console`_ and see the LEDs update on the MagTag.
 
 .. _Adafruit MagTag board: https://learn.adafruit.com/adafruit-magtag
 .. _MagTag purchase link: https://www.adafruit.com/magtag
