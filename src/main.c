@@ -245,16 +245,16 @@ void main(void)
 		wifi_connect();
 	}
 
-	client->on_connect = golioth_on_connect;
-	client->on_message = golioth_on_message;
-	golioth_system_client_start();
-
 	/* Init leds and set two blue pixels to show until we connect to Golioth */
 	ws2812_init();
 	leds_immediate(BLACK, BLUE, BLUE, BLACK);
 
 	/* buttons */
 	buttons_init(button_pressed);
+
+	client->on_connect = golioth_on_connect;
+	client->on_message = golioth_on_message;
+	golioth_system_client_start();
 
 	/* ePaper */
 	epaper_init();
@@ -264,8 +264,7 @@ void main(void)
 	{
 		k_msleep(1000);
 	}
-	/* turn LEDs green to indicate connection */
-	leds_immediate(GREEN, GREEN, GREEN, GREEN);
+	/* write successful connection message to screen */
 	epaper_autowrite("Connected to Golioth!", 21);
 
 	int err;
