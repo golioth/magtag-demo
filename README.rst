@@ -1,5 +1,22 @@
-Golioth Demo on Adafruit MagTag
-###############################
+Golioth Developer Training: Observe
+###################################
+
+This demo toggles four on-board LEDs on and off based on an observed data value
+on your Golioth Cloud.
+
+* Expected LightDB state key: ``leds``
+* Valid values: 0..15
+
+The decimal number entered on the console will be used as a binary bitmask. So
+entering the number 14 is the same as binary 0b1110 and would turn the right LED
+off and the other three on.
+
+Don't forget to click the "Submit" button when you change LightDB state values
+in the Golioth console. Each valid received value will be printed to the ePaper
+display. If you need help with debugging, check the logs in the console.
+
+Hardware: Adafruit MagTag
+*************************
 
 This demonstrates how to interact with the Golioth Cloud using Zephyr on the
 `Adafruit MagTag board`_.
@@ -14,7 +31,6 @@ Resources
 * `MagTag schematic`_
 * `MagTag high-level pinout`_
 * `MagTag design files`_
-
 
 Build instructions
 ******************
