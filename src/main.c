@@ -20,6 +20,87 @@ LOG_MODULE_REGISTER(golioth_magtag, LOG_LEVEL_DBG);
 #include <net/golioth/wifi.h>
 
 static struct golioth_client *client = GOLIOTH_SYSTEM_CLIENT_GET();
+static struct coap_reply coap_replies[1];
+uint8_t led_bitmask;
+uint8_t update_leds_flag;
+
+/*
+ * This function is registed to be called when the data
+ * stored at `/leds` changes.
+ */
+static int on_update(const struct coap_packet *response,
+		     struct coap_reply *reply,
+		     const struct sockaddr *from)
+{
+	char str[64];
+	uint16_t payload_len;
+	const uint8_t *payload;
+
+	payload = coap_packet_get_payload(response, &payload_len);
+	if (!payload) {
+		LOG_WRN("packet did not contain data");
+		return -ENOMSG;
+	}
+
+	if (payload_len + 1 > ARRAY_SIZE(str)) {
+		payload_len = ARRAY_SIZE(str) - 1;
+	}
+
+	memcpy(str, payload, payload_len);
+	str[payload_len] = '\0';
+
+	LOG_DBG("payload: %s", log_strdup(str));
+
+	/* Process the received payload */
+	char *ptr;
+	long ret;
+	/* Convert string to a number */
+	ret = strtol(str, &ptr, 10);
+	if (ret < 0 || ret > 15) {
+		/* Test for bounded value */
+		LOG_DBG("Payload was not a number in range [0..15]");
+	}
+	else
+	{
+		/* Value is valid, save it and flag for an LED update */
+		led_bitmask = (uint8_t)ret;
+		++update_leds_flag;
+	}
+
+	return 0;
+}
+
+/*
+ * In the `main` function, this function is registed to be
+ * called when the device connects to the Golioth server.
+ */
+static void golioth_on_connect(struct golioth_client *client)
+{
+	struct coap_reply *observe_reply;
+	int err;
+	update_leds_flag = 0;
+
+	coap_replies_clear(coap_replies, ARRAY_SIZE(coap_replies));
+
+	observe_reply = coap_reply_next_unused(coap_replies,
+					       ARRAY_SIZE(coap_replies));
+
+	/*
+	 * Observe the data stored at `/leds` in LightDB.
+	 * When that data is updated, the `on_update` callback
+	 * will be called.
+	 * This will get the value when first called, even if
+	 * the value doesn't change.
+	 */
+	err = golioth_lightdb_observe(client,
+				      GOLIOTH_LIGHTDB_PATH("leds"),
+				      COAP_CONTENT_FORMAT_TEXT_PLAIN,
+				      observe_reply, on_update);
+
+	if (err) {
+		LOG_WRN("failed to observe lightdb path: %d", err);
+	}
+}
 
 /*
  * In the `main` function, this function is registed to be
@@ -28,16 +109,12 @@ static struct golioth_client *client = GOLIOTH_SYSTEM_CLIENT_GET();
 static void golioth_on_message(struct golioth_client *client,
 			       struct coap_packet *rx)
 {
-	uint16_t payload_len;
-	const uint8_t *payload;
-	uint8_t type;
-
-	type = coap_header_get_type(rx);
-	payload = coap_packet_get_payload(rx, &payload_len);
-
-	if (!IS_ENABLED(CONFIG_LOG_BACKEND_GOLIOTH) && payload) {
-		LOG_HEXDUMP_DBG(payload, payload_len, "Payload");
-	}
+	/*
+	 * In order for the observe callback to be called,
+	 * we need to call this function.
+	 */
+	coap_response_received(rx, NULL, coap_replies,
+			       ARRAY_SIZE(coap_replies));
 }
 
 void main(void)
@@ -50,6 +127,7 @@ void main(void)
 		wifi_connect();
 	}
 
+	client->on_connect = golioth_on_connect;
 	client->on_message = golioth_on_message;
 	golioth_system_client_start();
 
@@ -73,20 +151,22 @@ void main(void)
 	int counter = 0;
 	int err;
 	while (true) {
-		/* Send hello message to the Golioth Cloud */
-		LOG_INF("Sending hello! %d", counter);
-		err = golioth_send_hello(client);
-		if (err) {
-			LOG_WRN("Failed to send hello!");
-		}
-		else
+		if (update_leds_flag)
 		{
-			/* Write messages on epaper for user feedback */
+			/* Set new LED on/off values based on led_bitmask */
+			leds_immediate(
+				(led_bitmask&8)?RED:BLACK,
+				(led_bitmask&4)?GREEN:BLACK,
+				(led_bitmask&2)?BLUE:BLACK,
+				(led_bitmask&1)?RED:BLACK
+			);
+			update_leds_flag = 0;
+
+			/* Write message to ePaper display about new led_bitmask */
 			uint8_t sbuf[24];
-			snprintk(sbuf, sizeof(sbuf) - 1, "Sending hello! %d", counter);
+			snprintk(sbuf, 24, "new led_bitmask: %d", led_bitmask);
 			epaper_autowrite(sbuf, strlen(sbuf));
 		}
-		++counter;
-		k_sleep(K_SECONDS(1));
+		k_sleep(K_MSEC(200));
 	}
 }
