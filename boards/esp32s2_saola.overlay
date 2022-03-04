@@ -1,100 +1,12 @@
-&i2c1 {
-	sda-pin = <33>;
-	scl-pin = <34>;
-	status = "okay";
-
-	lis3dh@19 {
-			compatible = "st,lis2dh";
-			reg = <0x19>;
-			label = "LIS3DH";
-	};
-};
-
-&spi2 {
-    mosi-pin = < 1 >;
-	sclk-pin = < 0 >;
-	led_strip: ws2812@0 {
-		compatible = "worldsemi,ws2812-spi";
-		label = "WS2812";
-
-		/* SPI */
-		reg = <0>; /* ignored, but necessary for SPI bindings */
-		spi-max-frequency = <8750000>;
-
-		/* WS2812 */
-		chain-length = <4>; /* arbitrary; change at will */
-		spi-one-frame = <0xF8>;
-		spi-zero-frame = <0xE0>;
-		color-mapping = <2 1 3>;
-	};
-};
-
 / {
-	aliases {
-		led-strip = &led_strip;
-		neopower = &neopower;
-		mosi = &mosi;
-		sclk = &sclk;
-		csel = &csel;
-		busy = &busy;
-		dc = &dc;
-		rst = &rst;
-		sw0 = &button0;
-        sw1 = &button1;
-		sw2 = &button2;
-        sw3 = &button3;
-	};
-
-	leds {
+    aliases {
+        led0 = &led0;
+    };
+    leds {
         compatible = "gpio-leds";
-        neopower: neo_power {
-            gpios = <&gpio0 21 GPIO_ACTIVE_HIGH>;
-            label = "Neopower";
-		};
-        mosi: mosi_p {
-            gpios = <&gpio1 3 GPIO_ACTIVE_HIGH>;
-            label = "mosi";
-        };
-		sclk: sclk_p {
-            gpios = <&gpio1 4 GPIO_ACTIVE_HIGH>;
-            label = "sclk";
-        };
-		csel: csel_p {
-            gpios = <&gpio0 8 GPIO_ACTIVE_HIGH>;
-            label = "csel";
-        };
-		dc: dc_pin {
-            gpios = <&gpio0 7 GPIO_ACTIVE_HIGH>;
-            label = "data_command";
-        };
-		rst: reset {
-            gpios = <&gpio0 6 GPIO_ACTIVE_HIGH>;
-            label = "reset";
+        led0: led_0 {
+            gpios = <&gpio0 13 GPIO_ACTIVE_HIGH>;
+            label = "LED 0";
         };
     };
-
-	gpio_keys {
-        compatible = "gpio-keys";
-		busy: busy_pin {
-            gpios = <&gpio0 5 GPIO_ACTIVE_HIGH>;
-            label = "busy";
-        };
-        button0: button_0 {
-            gpios = <&gpio0 11 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
-            label = "Button 0";
-        };
-        button1: button_1 {
-            gpios = <&gpio0 12 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
-            label = "Button 1";
-        };
-		button2: button_2 {
-            gpios = <&gpio0 14 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
-            label = "Button 2";
-        };
-        button3: button_3 {
-            gpios = <&gpio0 15 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
-            label = "Button 3";
-        };
-    };
-
 };

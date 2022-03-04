@@ -1,92 +1,42 @@
 /*
- * Copyright (c) 2022 Golioth, Inc.
+ * Copyright (c) 2016 Intel Corporation
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/* Logging */
-#include <stdlib.h>
-#include <logging/log.h>
-LOG_MODULE_REGISTER(golioth_magtag, LOG_LEVEL_DBG);
+#include <zephyr.h>
+#include <drivers/gpio.h>
 
-/* MagTag specific hardware includes */
-#include "epaper/EPD_2in9d.h"
-#include "epaper/ImageData.h"
-#include "ws2812/ws2812_control.h"
+/* 1000 msec = 1 sec */
+#define SLEEP_TIME_MS   1000
 
-/* Golioth platform includes */
-#include <net/coap.h>
-#include <net/golioth/system_client.h>
-#include <net/golioth/wifi.h>
-
-static struct golioth_client *client = GOLIOTH_SYSTEM_CLIENT_GET();
+/* The devicetree node identifier for the "led0" alias. */
+#define LED0_NODE DT_ALIAS(led0)
 
 /*
- * In the `main` function, this function is registed to be
- * called when the device receives a packet from the Golioth server.
+ * A build error on this line means your board is unsupported.
+ * See the sample documentation for information on how to fix this.
  */
-static void golioth_on_message(struct golioth_client *client,
-			       struct coap_packet *rx)
-{
-	uint16_t payload_len;
-	const uint8_t *payload;
-	uint8_t type;
-
-	type = coap_header_get_type(rx);
-	payload = coap_packet_get_payload(rx, &payload_len);
-
-	if (!IS_ENABLED(CONFIG_LOG_BACKEND_GOLIOTH) && payload) {
-		LOG_HEXDUMP_DBG(payload, payload_len, "Payload");
-	}
-}
+static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
 
 void main(void)
 {
-	LOG_DBG("Start MagTag Hello demo");
+	int ret;
 
-	/* WiFi */
-	if (IS_ENABLED(CONFIG_GOLIOTH_SAMPLE_WIFI)) {
-		LOG_INF("Connecting to WiFi");
-		wifi_connect();
+	if (!device_is_ready(led.port)) {
+		return;
 	}
 
-	client->on_message = golioth_on_message;
-	golioth_system_client_start();
-
-
-	/* Initialize MagTag hardware */
-	ws2812_init();
-	/* show two blue pixels to show until we connect to Golioth */
-	leds_immediate(BLACK, BLUE, BLUE, BLACK);
-	epaper_init();
-
-	/* wait until we've connected to golioth */
-	while (golioth_ping(client) != 0)
-	{
-		k_msleep(1000);
+	ret = gpio_pin_configure_dt(&led, GPIO_OUTPUT_ACTIVE);
+	if (ret < 0) {
+		return;
 	}
-	/* turn LEDs green to indicate connection */
-	leds_immediate(GREEN, GREEN, GREEN, GREEN);
-	epaper_autowrite("Connected to Golioth!", 21);
 
-
-	int counter = 0;
-	int err;
-	while (true) {
-		/* Send hello message to the Golioth Cloud */
-		LOG_INF("Sending hello! %d", counter);
-		err = golioth_send_hello(client);
-		if (err) {
-			LOG_WRN("Failed to send hello!");
+	while (1) {
+		ret = gpio_pin_toggle_dt(&led);
+		if (ret < 0) {
+			return;
 		}
-		else
-		{
-			/* Write messages on epaper for user feedback */
-			uint8_t sbuf[24];
-			snprintk(sbuf, sizeof(sbuf) - 1, "Sending hello! %d", counter);
-			epaper_autowrite(sbuf, strlen(sbuf));
-		}
-		++counter;
-		k_sleep(K_SECONDS(5));
+		k_msleep(SLEEP_TIME_MS);
 	}
 }
