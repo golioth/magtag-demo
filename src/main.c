@@ -4,48 +4,31 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/* Golioth */
+/* Logging */
+#include <stdlib.h>
 #include <logging/log.h>
 LOG_MODULE_REGISTER(golioth_magtag, LOG_LEVEL_DBG);
+
+/* Golioth */
 #include <net/coap.h>
 #include <net/golioth/system_client.h>
 #include <net/golioth/wifi.h>
 
-#include <stdlib.h>
-/* json */
-#include <data/json.h>
-
-/* Accelerometer */
-#include "accelerometer/accel.h"
-
-/* ePaper */
+/* MagTag specific hardware includes */
 #include "epaper/EPD_2in9d.h"
-const uint8_t demostr0[] = "I must not fear.";
-const uint8_t demostr1[] = "Fear is the mind-killer.";
-const uint8_t demostr2[] = "Fear is the little-death that brings total obliteration.";
-const uint8_t demostr3[] = "I will face my fear.";
-const uint8_t demostr4[] = "I will permit it to pass over me and through me.";
-const uint8_t demostr5[] = "And when it has gone past I will turn the inner eye to see its path.";
-const uint8_t demostr6[] = "Where the fear has gone there will be nothing.";
-const uint8_t demostr7[] = "Only I will remain.";
-const uint8_t *str_p[] = {demostr0, demostr1, demostr2, demostr3, demostr4, demostr5, demostr6, demostr7 };
-
-/* ws2812 */
 #include "ws2812/ws2812_control.h"
-
-/* buttons*/
+#include "accelerometer/accel.h"
+#include "json/json-helper.h"
+#include <data/json.h>
 #include "buttons/buttons.h"
+
+struct led_settings led_received_changes;
+uint8_t leds_need_update_flag;
 volatile uint64_t debounce = 0;
 
 /* Golioth */
 static struct golioth_client *client = GOLIOTH_SYSTEM_CLIENT_GET();
 static struct coap_reply coap_replies[1];
-
-/* JSON parsing structs */
-#include "json/json-helper.h"
-
-struct led_settings led_received_changes;
-uint8_t leds_need_update_flag;
 
 /*
  * This function is registed to be called when the data
@@ -161,6 +144,13 @@ static int record_accelerometer(const struct device *sensor)
 	if (err) {
 		return err;
 	}
+	snprintk(str, sizeof(str) -1, 
+			"%.4f %.4f %.4f",
+			sensor_value_to_double(&accel[0]),
+			sensor_value_to_double(&accel[1]),
+			sensor_value_to_double(&accel[2])
+			);
+	epaper_autowrite(str, strlen(str));
 	return 0;
 }
 
@@ -269,8 +259,14 @@ void main(void)
 	/* ePaper */
 	epaper_init();
 
-	uint8_t epaper_partial_demo_loopcount = 0;
-	uint8_t epaper_partial_demo_linecount = 0;
+	/* wait until we've connected to golioth */
+	while (golioth_ping(client) != 0)
+	{
+		k_msleep(1000);
+	}
+	/* turn LEDs green to indicate connection */
+	leds_immediate(GREEN, GREEN, GREEN, GREEN);
+	epaper_autowrite("Connected to Golioth!", 21);
 
 	int err;
 	while (true) {
@@ -285,15 +281,6 @@ void main(void)
 		if (leds_need_update_flag) {
 			ws2812_blit(strip, led_states, STRIP_NUM_PIXELS);
 			leds_need_update_flag = 0;
-		}
-
-		if (++epaper_partial_demo_loopcount >= 5 && epaper_partial_demo_linecount < 8)
-		{
-			epaper_autowrite(
-				(void *)str_p[epaper_partial_demo_linecount],
-				strlen(str_p[epaper_partial_demo_linecount])
-				);
-			++epaper_partial_demo_linecount;
 		}
 
 		k_sleep(K_MSEC(200));

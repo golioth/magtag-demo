@@ -1,5 +1,39 @@
-Golioth Demo on Adafruit MagTag
-###############################
+Golioth Developer Training: Kitchen-Sink
+########################################
+
+This demo combines a number of demonstrations:
+
+* LEDs can be toggled on or off by the buttons or the Golioth console
+* LED colors can be changed via the Golioth console
+* Accelerometer data sent to LightDB stream every few seconds
+* Accelerometer data will be displayed on the ePaper screen
+
+For LED control to work, this demo expects a LightDB state object in this
+format:
+
+ .. code-block:: json
+
+    {
+      "magtag": {
+        "led0_color": "red",
+        "led0_state": 1,
+        "led1_color": "green",
+        "led1_state": 1,
+        "led2_color": "blue",
+        "led2_state": 1,
+        "led3_color": "red",
+        "led3_state": 1
+      }
+    }
+
+You can add this structure using the ``goliothctl`` command line tool:
+
+.. code-block:: bash
+
+   goliothctl lightdb set <device-id> /magtag -b '{"led0_color":"red","led0_state": 0,"led1_color":"green","led1_state": 1,"led2_color":"blue","led2_state": 1,"led3_color":"red","led3_state":1}'
+
+Hardware: Adafruit MagTag
+*************************
 
 This demonstrates how to interact with the Golioth Cloud using Zephyr on the
 `Adafruit MagTag board`_.
@@ -19,7 +53,35 @@ Resources
 Build instructions
 ******************
 
-Create a credentials file to use from commandline (wifi and golioth):
+Clone this repository into your Golioth folder within the Zephyr install
+directory
+
+**NOTE:** Your zephyr location may be different than below, check where
+`zephyrproject` has been installed.
+
+.. code-block:: bash
+
+   ~/zephyrproject/modules/lib/golioth/samples
+   git clone git@github.com:golioth/magtag-demo.git
+
+Ensure that you have activated your virtual environment and set up the
+espressif toolchain environment variables. These can be in different places
+depending on your operating system but should look something like this:
+
+.. code-block:: bash
+
+   source ~/zephyrproject/.venv/bin/activate
+   export ESPRESSIF_TOOLCHAIN_PATH="${HOME}/.espressif/tools/zephyr/"
+   export ZEPHYR_TOOLCHAIN_VARIANT="espressif"
+
+Create a credentials file
+=========================
+
+Create a credentials file called ``credentials.overlay`` that contains your
+Golioth device psk-id/psk and your WiFi SSID/password. We have included an
+example called ``credentials.overlay_example`` as a starting point.
+
+Here is what the contents of that file should look like.
 
 .. code-block::
 
@@ -32,85 +94,28 @@ Create a credentials file to use from commandline (wifi and golioth):
 Build
 =====
 
-``west build -b esp32s2_saola samples/magtag/magtag-demo/ -D OVERLAY_CONFIG=~/Desktop/esp32-devboard-one-golioth.conf``
-
-Build for development server:
-=============================
-
-``west build -b esp32s2_saola samples/magtag/magtag-hello/ -D OVERLAY_CONFIG=~/Desktop/esp32-devboard-one-devserver.conf -D CONFIG_GOLIOTH_SYSTEM_SERVER_HOST=\"coap.golioth.net\" -p``
+``west build -b esp32s2_saola . -D OVERLAY_CONFIG=credentials.overlay -p``
 
 Flash
 =====
 
 ``west flash --esp-device=/dev/ttyACM0``
 
-Board must be manually put in DFU mode (hold boot, hit reset) and manually reset
-after flashing)
+Board must be manually put into DFU mode (hold boot, hit reset) and manually
+reset after flashing.
 
+Behavior
+********
 
-Status
-******
+At boot time the MagTag will not visibly react until after the WiFi hardware is
+initialized. That process can take several seconds, at which point the two center
+LEDs will turn blue to indicate the board is trying to establish an internet
+connection and connect with Golioth.
 
-Started from the lightDB/observe sample.
-
-* Added in JSON parsing. Add this to lightDB state in console:
-
-  .. code-block:: json
-
-     {
-        "led_settings": {
-           "led0_color": "red",
-           "led0_state": 1,
-           "led1_color": "green",
-           "led1_state": 1,
-           "led2_color": "blue",
-           "led2_state": 1,
-           "led3_color": "red",
-           "led3_state": 0
-        }
-     }
-
-* Added ws2812 hardware support
-* Added lis3dh accelerometer support
-* Added button input support
-* Added state write to Golioth on button press
-
-Fixme
-*****
-
-* The ESP32s2_soala will only compile for me if I set: ``CONFIG_NET_SHELL=n``
-* USB-CDC for console
-* This particular epaper display is not currently supported in Zephyr
-* Add light sensor
-* Add speaker
-* Sort out overlay so all pins are mapped
-* Button debounce
-
-Fast Hash
-*********
-
-Instead of doing string comparison in c, we can do a weak hash to match strings.
-This is just does an ``XOR`` on the ascii values for the letters and using the
-result as the matching value.
-
-A python function can be used to compute these easily:
-
-.. code-block::
-
-   >>> from operator import xor
-   >>> wordlist = ["red","green","blue","off"]
-   >>> def fasthash(word):
-        count = 0
-        for i in word:
-           count = xor(count,ord(i))
-        print(word,count)
-
-      
-   >>> for i in wordlist:
-      	fasthash(i)
-
-	
-   red 115 green 123 blue 30 off 111
+When a connection with Golioth is achieve, all three LEDs will turn green. The
+board will then begin sending "Hello!" messages to the Golioth cloud. You should
+see this indicated on on the ePaper screen, and can confirm the messages are
+being received by visiting `the Golioth console`_.
 
 .. _Adafruit MagTag board: https://learn.adafruit.com/adafruit-magtag
 .. _MagTag purchase link: https://www.adafruit.com/magtag
@@ -119,3 +124,4 @@ A python function can be used to compute these easily:
 .. _MagTag high-level pinout: https://github.com/adafruit/Adafruit_MagTag_PCBs/blob/main/Adafruit%20MagTag%20ESP32-S2%20pinout.pdf
 .. _MagTag design files: https://github.com/adafruit/Adafruit_MagTag_PCBs
 .. _AdafruitAdafruit MagTag board: https://www.adafruit.com/magtag
+.. _the Golioth console: https://console.golioth.io/
