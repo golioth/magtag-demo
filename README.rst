@@ -33,7 +33,7 @@ You can add this structure using the ``goliothctl`` command line tool:
    # Make sure you've authenticated the CLI tool
    goliothctl login
    # Send JSON object to LightDB state
-   goliothctl lightdb set <device-name> /magtag -b '{"led0_color":"red","led0_state": 0,"led1_color":"green","led1_state": 1,"led2_color":"blue","led2_state": 1,"led3_color":"red","led3_state":1}'
+   goliothctl lightdb set <device-name> / -b '{"led0":{"color":"red","state":1},"led1":{"color":"green","state":1},"led2":{"color":"blue","state":1},"led3":{"color":"red","state":1}}'
 
 Hardware: Adafruit MagTag
 *************************

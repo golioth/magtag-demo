@@ -22,21 +22,13 @@ LOG_MODULE_REGISTER(golioth_magtag, LOG_LEVEL_DBG);
 #include <data/json.h>
 #include "buttons/buttons.h"
 
-struct led_settings led_received_changes;
-uint8_t leds_need_update_flag;
 volatile uint64_t debounce = 0;
 
 /* Golioth */
 static struct golioth_client *client = GOLIOTH_SYSTEM_CLIENT_GET();
-static struct coap_reply coap_replies[1];
+static struct coap_reply coap_replies[4];
 
-/*
- * This function is registed to be called when the data
- * stored at `/observed` changes.
- */
-static int on_update(const struct coap_packet *response,
-		     struct coap_reply *reply,
-		     const struct sockaddr *from)
+static int process_led_change(const struct coap_packet *response, uint8_t led_num)
 {
 	char str[160];
 	uint16_t payload_len;
@@ -57,10 +49,11 @@ static int on_update(const struct coap_packet *response,
 
 	LOG_DBG("payload: %s", log_strdup(str));
 
+	struct atomic_led new_led_values;
 	int ret = json_obj_parse(str, sizeof(str),
-			     led_settings_descr,
-				 ARRAY_SIZE(led_settings_descr),
-			     &led_received_changes);
+			     atomic_led_descr,
+				 ARRAY_SIZE(atomic_led_descr),
+			     &new_led_values);
 
 	if (ret < 0)
 	{
@@ -69,30 +62,43 @@ static int on_update(const struct coap_packet *response,
 	else
 	{
 		LOG_DBG("JSON return code: %u", ret);
-		if (ret & 1<<0)
+		if (ret & (1<<0 | 1<<1))
 		{
-			LOG_INF("LED0 Color: %s State: %d", led_received_changes.led0_color, led_received_changes.led0_state);
-			set_leds(0, led_received_changes.led0_color, led_received_changes.led0_state);
+			LOG_INF("LED%d Color: %s State: %d", led_num, new_led_values.color, new_led_values.state);
+			set_leds(led_num, new_led_values.color, new_led_values.state);
 		}
-		if (ret & 1<<2)
-		{
-			LOG_INF("LED1 Color: %s State: %d", led_received_changes.led1_color, led_received_changes.led1_state);
-			set_leds(1, led_received_changes.led1_color, led_received_changes.led1_state);
-		}
-		if (ret & 1<<4)
-		{
-			LOG_INF("LED2 Color: %s State: %d", led_received_changes.led2_color, led_received_changes.led2_state);
-			set_leds(2, led_received_changes.led2_color, led_received_changes.led2_state);
-		}
-		if (ret & 1<<6)
-		{
-			LOG_INF("LED3 Color: %s State: %d", led_received_changes.led3_color, led_received_changes.led3_state);
-			set_leds(3, led_received_changes.led3_color, led_received_changes.led3_state);
-		}
-		++leds_need_update_flag;
+		ws2812_blit(strip, led_states, STRIP_NUM_PIXELS);
 	}
 
 	return 0;
+}
+
+static int on_led0_update(const struct coap_packet *response,
+		     struct coap_reply *reply,
+		     const struct sockaddr *from)
+{
+	return process_led_change(response, 0);
+}
+
+static int on_led1_update(const struct coap_packet *response,
+		     struct coap_reply *reply,
+		     const struct sockaddr *from)
+{
+	return process_led_change(response, 1);
+}
+
+static int on_led2_update(const struct coap_packet *response,
+		     struct coap_reply *reply,
+		     const struct sockaddr *from)
+{
+	return process_led_change(response, 2);
+}
+
+static int on_led3_update(const struct coap_packet *response,
+		     struct coap_reply *reply,
+		     const struct sockaddr *from)
+{
+	return process_led_change(response, 3);
 }
 
 /*
@@ -106,8 +112,7 @@ static void golioth_on_connect(struct golioth_client *client)
 
 	coap_replies_clear(coap_replies, ARRAY_SIZE(coap_replies));
 
-	observe_reply = coap_reply_next_unused(coap_replies,
-					       ARRAY_SIZE(coap_replies));
+	
 
 	/*
 	 * Observe the data stored at `/observed` in LightDB.
@@ -116,11 +121,39 @@ static void golioth_on_connect(struct golioth_client *client)
 	 * This will get the value when first called, even if
 	 * the value doesn't change.
 	 */
+	observe_reply = coap_reply_next_unused(coap_replies,
+					       ARRAY_SIZE(coap_replies));
 	err = golioth_lightdb_observe(client,
-				      GOLIOTH_LIGHTDB_PATH("magtag"),
+				      GOLIOTH_LIGHTDB_PATH("led0"),
 				      COAP_CONTENT_FORMAT_TEXT_PLAIN,
-				      observe_reply, on_update);
-
+				      observe_reply, on_led0_update);
+	if (err) {
+		LOG_WRN("failed to observe lightdb path: %d", err);
+	}
+	observe_reply = coap_reply_next_unused(coap_replies,
+					       ARRAY_SIZE(coap_replies));
+	err = golioth_lightdb_observe(client,
+				      GOLIOTH_LIGHTDB_PATH("led1"),
+				      COAP_CONTENT_FORMAT_TEXT_PLAIN,
+				      observe_reply, on_led1_update);
+	if (err) {
+		LOG_WRN("failed to observe lightdb path: %d", err);
+	}
+	observe_reply = coap_reply_next_unused(coap_replies,
+					       ARRAY_SIZE(coap_replies));
+	err = golioth_lightdb_observe(client,
+				      GOLIOTH_LIGHTDB_PATH("led2"),
+				      COAP_CONTENT_FORMAT_TEXT_PLAIN,
+				      observe_reply, on_led2_update);
+	if (err) {
+		LOG_WRN("failed to observe lightdb path: %d", err);
+	}
+	observe_reply = coap_reply_next_unused(coap_replies,
+					       ARRAY_SIZE(coap_replies));
+	err = golioth_lightdb_observe(client,
+				      GOLIOTH_LIGHTDB_PATH("led3"),
+				      COAP_CONTENT_FORMAT_TEXT_PLAIN,
+				      observe_reply, on_led3_update);
 	if (err) {
 		LOG_WRN("failed to observe lightdb path: %d", err);
 	}
@@ -209,11 +242,12 @@ void button_pressed(const struct device *dev, struct gpio_callback *cb,
 			if (led_states[i].state < 0) continue; //Indicates no cloud sync yet
 			int8_t toggle_val = led_states[i].state > 0 ? 0 : 1;
 			led_states[i].state = toggle_val;
-			++leds_need_update_flag;
+			/* update local LED output immediately */
+			ws2812_blit(strip, led_states, STRIP_NUM_PIXELS);
 
 			/* Build the endpoint with the correct LED number */
 			uint8_t endpoint[32];
-			snprintk(endpoint, sizeof(endpoint)-1, ".d/magtag/led%d_state",	i);
+			snprintk(endpoint, sizeof(endpoint)-1, ".d/led%d/state",	i);
 			/* convert the toggle_val digit into a string */
 			char state_buf[2] = { '0'+toggle_val, 0 };
 
@@ -233,11 +267,8 @@ void main(void)
 {
 	LOG_DBG("Start MagTag demo");
 
-	leds_need_update_flag = 0;
-
 	/* Accelerometer */
 	accelerometer_init();
-	uint8_t lis3dh_loopcount = 0;
 
 	/* WiFi */
 	if (IS_ENABLED(CONFIG_GOLIOTH_SAMPLE_WIFI)) {
@@ -269,19 +300,11 @@ void main(void)
 
 	int err;
 	while (true) {
-		if (++lis3dh_loopcount >= 50) {
-			lis3dh_loopcount = 0;
-			err = record_accelerometer(sensor);
-			if (err) {
-				LOG_WRN("Failed to send accel data to LightDB stream: %d", err);
-			}
+		err = record_accelerometer(sensor);
+		if (err) {
+			LOG_WRN("Failed to send accel data to LightDB stream: %d", err);
 		}
 
-		if (leds_need_update_flag) {
-			ws2812_blit(strip, led_states, STRIP_NUM_PIXELS);
-			leds_need_update_flag = 0;
-		}
-
-		k_sleep(K_MSEC(200));
+		k_sleep(K_SECONDS(5));
 	}
 }
