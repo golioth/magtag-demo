@@ -1,5 +1,5 @@
-Golioth Developer Training: Observe
-###################################
+Golioth Developer Training: Hello
+#################################
 
 This demo sends a hello log message to the Golioth console every few seconds.
 
