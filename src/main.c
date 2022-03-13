@@ -29,7 +29,7 @@ void main(void)
 
 	epaper_init();
 
-	epaper_autowrite("Connected to Golioth!", 21);
+	//epaper_autowrite("Connected to Golioth!", 21);
 
 	//memcpy(&m1, &gImage_2in9, 296*16);
 	for (uint16_t i=0; i<296*16; i++) {
@@ -37,6 +37,7 @@ void main(void)
 		if ((i%16)%2==0) m2[i] = 0xff;
 		else m2[i] = 0x00;
 	}
+	EPD_2IN9D_SendDoubleColumn("Golioth", 8, m1, 4);
 	EPD_2IN9D_Init();
 	EPD_2IN9D_Clear();
 	EPD_2IN9D_Display(m1);

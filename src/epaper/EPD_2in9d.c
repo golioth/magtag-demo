@@ -501,64 +501,82 @@ void double_flip_invert(uint8_t orig_column, uint8_t return_cols[2]) {
     return_cols[1] = flip_invert(lower_column);
 }
 
+uint16_t get_double_idx(uint16_t col_idx, uint8_t double_row)
+{
+    return (col_idx*16)+(2*double_row);
+}
+
 /**
  * @brief Write data for double-height text to display
  *
- * Tihs can be used for both partial and full writes.
+ * This can be used for both partial and full writes.
  *
  * @param str       String to display
  * @param str_len   Length of string
  * @param full      True if called by a full refresh, false for a partial
  * refresh
  */
-static void EPD_2IN9D_SendDoubleColumn(uint8_t *str, uint8_t str_len, bool full)
+void EPD_2IN9D_SendDoubleColumn(uint8_t *str, uint8_t str_len, uint8_t *buff, uint8_t row)
 {
+    #define VAMP_COUNT  4
+    #define TEXT_START_COL  VAMP_COUNT
     uint8_t send_col[2] = {0};
     uint8_t letter;
     uint8_t column = 0;
     uint8_t str_idx = 23;
-    uint8_t vamp_count = full? 64:8;
-    for (uint8_t i=0; i<vamp_count; i++) EPD_2IN9D_SendData(0xff); //Unused columns
+    uint16_t col_idx = 0;
+    uint16_t text_end_col_idx = 296-VAMP_COUNT-1;
+    uint16_t buf_idx;
+
+    // Center text with leftover cols that are smaller than one char
+    for (uint8_t i=0; i<VAMP_COUNT; i++)
+    {
+        // Space before
+        buf_idx = get_double_idx(col_idx++, row);
+        buff[buf_idx] = 0xff;
+        buff[buf_idx+1] = 0xff;
+
+        // Space after
+        buf_idx = get_double_idx(text_end_col_idx++, row);
+        buff[buf_idx] = 0xff;
+        buff[buf_idx+1] = 0xff;
+    }
+    // Add text data
+    col_idx = TEXT_START_COL;
     for (UWORD j = 0; j < 144; j++) {
-        for (UWORD i = 0; i < 1; i++) {
-            if (column == 0 || str_idx >= str_len)
+        if (column == 0 || str_idx >= str_len)
+        {
+            send_col[0] = 0xff;
+            send_col[1] = 0xff;
+        }
+        else
+        {
+            if (str[str_idx] < 32 || str[str_idx] > 127)
             {
-                send_col[0] = 0xff;
-                send_col[1] = 0xff;
+                //Out of bounds, print a space
+                letter = 0;
             }
             else
             {
-                if (str[str_idx] < 32 || str[str_idx] > 127)
-                {
-                    //Out of bounds, print a space
-                    letter = 0;
-                }
-                else
-                {
-                    letter = str[str_idx] - 32;
-                }
-                uint8_t letter_column = font5x8[(5*letter)+(5-column)];
-                double_flip_invert(letter_column, send_col);
+                letter = str[str_idx] - 32;
             }
+            uint8_t letter_column = font5x8[(5*letter)+(5-column)];
+            double_flip_invert(letter_column, send_col);
+        }
 
-            for (uint8_t i=0; i<2; i++)
-            {
-                EPD_2IN9D_SendData(send_col[1]);
-                EPD_2IN9D_SendData(send_col[0]);
-                if (full)
-                {
-                    for (uint8_t j=0; j<14; j++) EPD_2IN9D_SendData(0xff); //Unused columns
-                }
-            }
+        for (uint8_t i=0; i<2; i++)
+        {
+            buf_idx = get_double_idx(col_idx++, row);
+            buff[buf_idx] = send_col[1];
+            buff[buf_idx+1] = send_col[0];
+        }
 
-            if (++column > 5)
-            {
-                column = 0;
-                --str_idx;
-            }
+        if (++column > 5)
+        {
+            column = 0;
+            --str_idx;
         }
     }
-    for (uint8_t i=0; i<vamp_count; i++) EPD_2IN9D_SendData(0xff); //Unused columns
 }
 
 /**
@@ -571,31 +589,32 @@ static void EPD_2IN9D_SendDoubleColumn(uint8_t *str, uint8_t str_len, bool full)
  */
 void epaper_WriteDoubleLine(uint8_t *str, uint8_t str_len, uint8_t line)
 {
-    if (line > 7) return;
-    EPD_2IN9D_Init();
-    /* Set partial Windows */
-    EPD_2IN9D_Init();
-    EPD_2IN9D_SetPartReg();
-    EPD_2IN9D_SendCommand(0x91);		//This command makes the display enter partial mode
-    EPD_2IN9D_SendCommand(0x90);		//resolution setting
-    EPD_2IN9D_SendData(line*16);           //x-start
-    EPD_2IN9D_SendData((line*16)+16 - 1);       //x-end
 
-    EPD_2IN9D_SendData(0);
-    EPD_2IN9D_SendData(0);     //y-start
-    EPD_2IN9D_SendData(296 / 256);
-    EPD_2IN9D_SendData(296 % 256 - 1);  //y-end
-    EPD_2IN9D_SendData(0x28);
+    // if (line > 7) return;
+    // EPD_2IN9D_Init();
+    // /* Set partial Windows */
+    // EPD_2IN9D_Init();
+    // EPD_2IN9D_SetPartReg();
+    // EPD_2IN9D_SendCommand(0x91);		//This command makes the display enter partial mode
+    // EPD_2IN9D_SendCommand(0x90);		//resolution setting
+    // EPD_2IN9D_SendData(line*16);           //x-start
+    // EPD_2IN9D_SendData((line*16)+16 - 1);       //x-end
+
+    // EPD_2IN9D_SendData(0);
+    // EPD_2IN9D_SendData(0);     //y-start
+    // EPD_2IN9D_SendData(296 / 256);
+    // EPD_2IN9D_SendData(296 % 256 - 1);  //y-end
+    // EPD_2IN9D_SendData(0x28);
     
-    /* send data */
-    EPD_2IN9D_SendCommand(0x13);
+    // /* send data */
+    // EPD_2IN9D_SendCommand(0x13);
 
-    //FIXME: column centering a looping only works for full-width
-    EPD_2IN9D_SendDoubleColumn(str, str_len, false);
+    // //FIXME: column centering a looping only works for full-width
+    // EPD_2IN9D_SendDoubleColumn(str, str_len, false);
 
-    /* Set partial refresh */    
-    EPD_2IN9D_TurnOnDisplay();
-    EPD_2IN9D_Sleep();
+    // /* Set partial refresh */    
+    // EPD_2IN9D_TurnOnDisplay();
+    // EPD_2IN9D_Sleep();
 }
 
 /**
@@ -608,24 +627,24 @@ void epaper_WriteDoubleLine(uint8_t *str, uint8_t str_len, uint8_t line)
  */
 void EPD_2IN9D_FullRefreshDoubleLine(uint8_t *str, uint8_t str_len)
 {
-    UWORD Width, Height;
-    Width = (EPD_2IN9D_WIDTH % 8 == 0)? (EPD_2IN9D_WIDTH / 8 ): (EPD_2IN9D_WIDTH / 8 + 1);
-    Height = EPD_2IN9D_HEIGHT;
+    // UWORD Width, Height;
+    // Width = (EPD_2IN9D_WIDTH % 8 == 0)? (EPD_2IN9D_WIDTH / 8 ): (EPD_2IN9D_WIDTH / 8 + 1);
+    // Height = EPD_2IN9D_HEIGHT;
 
-    EPD_2IN9D_SendCommand(0x10);
-    for (UWORD j = 0; j < Height; j++) {
-        for (UWORD i = 0; i < Width; i++) {
-            EPD_2IN9D_SendData(0x00);
-        }
-    }
-    // Dev_Delay_ms(10);
+    // EPD_2IN9D_SendCommand(0x10);
+    // for (UWORD j = 0; j < Height; j++) {
+    //     for (UWORD i = 0; i < Width; i++) {
+    //         EPD_2IN9D_SendData(0x00);
+    //     }
+    // }
+    // // Dev_Delay_ms(10);
 
-    EPD_2IN9D_SendCommand(0x13);
-    EPD_2IN9D_SendDoubleColumn(str, str_len, true);
-    // Dev_Delay_ms(10);
+    // EPD_2IN9D_SendCommand(0x13);
+    // EPD_2IN9D_SendDoubleColumn(str, str_len, true);
+    // // Dev_Delay_ms(10);
 
-    EPD_2IN9D_TurnOnDisplay();
-    EPD_2IN9D_Sleep();
+    // EPD_2IN9D_TurnOnDisplay();
+    // EPD_2IN9D_Sleep();
 }
 
 /**
