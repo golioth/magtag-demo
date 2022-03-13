@@ -37,17 +37,19 @@ void main(void)
 		if ((i%16)%2==0) m2[i] = 0xff;
 		else m2[i] = 0x00;
 	}
-	EPD_2IN9D_SendDoubleColumn("Golioth", 8, m1, 4);
+	EPD_2IN9D_SendDoubleColumn("Golioth", 8, m1, 0);
 	EPD_2IN9D_Init();
 	EPD_2IN9D_Clear();
 	EPD_2IN9D_Display(m1);
-	k_sleep(K_SECONDS(5));
+	k_sleep(K_SECONDS(2));
+	set_buffers(m1, m2);
 	while (1)
 	{
-		EPD_2IN9D_DisplaySwap(m1, m2);
-		k_sleep(K_SECONDS(3));
-		EPD_2IN9D_DisplaySwap(m2, m1);
-		k_sleep(K_SECONDS(3));
+		// EPD_2IN9D_DisplaySwap(m1, m2);
+		// k_sleep(K_SECONDS(3));
+		// EPD_2IN9D_DisplaySwap(m2, m1);
+		// k_sleep(K_SECONDS(3));
+		epaper_autowrite("hello world!", 13);
 	}
 
 	int counter = 0;

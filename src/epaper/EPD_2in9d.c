@@ -58,6 +58,10 @@
 #include <logging/log.h>
 LOG_MODULE_REGISTER(golioth_epaper, LOG_LEVEL_DBG);
 
+/* Framebuffer pointers */
+uint8_t *old;
+uint8_t *new;
+
 /**
  * partial screen update LUT
 **/
@@ -332,7 +336,7 @@ void EPD_2IN9D_Display(UBYTE *Image)
     EPD_2IN9D_TurnOnDisplay();
 }
 
-void EPD_2IN9D_DisplaySwap(uint8_t *old, uint8_t *new)
+void EPD_2IN9D_DisplayOldNew(uint8_t *old, uint8_t *new)
 {
     UWORD Width, Height;
     Width = (EPD_2IN9D_WIDTH % 8 == 0)? (EPD_2IN9D_WIDTH / 8 ): (EPD_2IN9D_WIDTH / 8 + 1);
@@ -341,7 +345,7 @@ void EPD_2IN9D_DisplaySwap(uint8_t *old, uint8_t *new)
     EPD_2IN9D_SendCommand(0x10);
     for (UWORD j = 0; j < Height; j++) {
         for (UWORD i = 0; i < Width; i++) {
-            EPD_2IN9D_SendData(old[i + j * Width]);
+            EPD_2IN9D_SendData(~old[i + j * Width]);
         }
     }
     // Dev_Delay_ms(10);
@@ -525,7 +529,7 @@ void EPD_2IN9D_SendDoubleColumn(uint8_t *str, uint8_t str_len, uint8_t *buff, ui
     uint8_t column = 0;
     uint8_t str_idx = 23;
     uint16_t col_idx = 0;
-    uint16_t text_end_col_idx = 296-VAMP_COUNT-1;
+    uint16_t text_end_col_idx = 296-VAMP_COUNT;
     uint16_t buf_idx;
 
     // Center text with leftover cols that are smaller than one char
@@ -674,9 +678,26 @@ void epaper_init(void) {
     EPD_2IN9D_Clear();
 	k_sleep(K_MSEC(500));
 
-	LOG_INF("Show Golioth logo");
-	EPD_2IN9D_Display((void *)gImage_2in9); /* cast because function is not expecting a CONST array) */
+	//LOG_INF("Show Golioth logo");
+	//EPD_2IN9D_Display((void *)gImage_2in9); /* cast because function is not expecting a CONST array) */
     EPD_2IN9D_Sleep(); /* always sleep the ePaper display to avoid damaging it */
+}
+
+void set_buffers(uint8_t *new_buf, uint8_t *old_buf) {
+    new = new_buf;
+    old = old_buf;
+}
+
+void swap_buffers(void)
+{
+    uint8_t *swap = old;
+    old = new;
+    new = swap;
+}
+
+void fill_buffer(uint8_t *b, uint8_t value)
+{
+    for (uint16_t i=0; i<296*16; i++) b[i] = value;
 }
 
 /**
@@ -691,15 +712,18 @@ void epaper_autowrite(uint8_t *str, uint8_t str_len)
     static uint8_t line = 0;
     if (line > 7)
     {
+        swap_buffers();
+        fill_buffer(new, 0xFF);
+        EPD_2IN9D_SendDoubleColumn(str, str_len, new, 0);
         EPD_2IN9D_Init();
-        EPD_2IN9D_Clear();
-        EPD_2IN9D_FullRefreshDoubleLine(str, str_len);
+        EPD_2IN9D_DisplayOldNew(old, new);
         line = 1;
     }
     else
     {
-        epaper_WriteDoubleLine(str, str_len, line);
-        ++line;
+        EPD_2IN9D_SendDoubleColumn(str, str_len, new, line++);
+        EPD_2IN9D_Init();
+        EPD_2IN9D_DisplayPart(new);
     }
 }
 
