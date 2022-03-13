@@ -332,6 +332,31 @@ void EPD_2IN9D_Display(UBYTE *Image)
     EPD_2IN9D_TurnOnDisplay();
 }
 
+void EPD_2IN9D_DisplaySwap(uint8_t *old, uint8_t *new)
+{
+    UWORD Width, Height;
+    Width = (EPD_2IN9D_WIDTH % 8 == 0)? (EPD_2IN9D_WIDTH / 8 ): (EPD_2IN9D_WIDTH / 8 + 1);
+    Height = EPD_2IN9D_HEIGHT;
+
+    EPD_2IN9D_SendCommand(0x10);
+    for (UWORD j = 0; j < Height; j++) {
+        for (UWORD i = 0; i < Width; i++) {
+            EPD_2IN9D_SendData(old[i + j * Width]);
+        }
+    }
+    // Dev_Delay_ms(10);
+
+    EPD_2IN9D_SendCommand(0x13);
+    for (UWORD j = 0; j < Height; j++) {
+        for (UWORD i = 0; i < Width; i++) {
+            EPD_2IN9D_SendData(new[i + j * Width]);
+        }
+    }
+    // Dev_Delay_ms(10);
+
+    EPD_2IN9D_TurnOnDisplay();
+}
+
 /******************************************************************************
 function :	Sends the image buffer in RAM to e-Paper and displays
 parameter:

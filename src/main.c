@@ -8,84 +8,58 @@
 #include <stdlib.h>
 #include <logging/log.h>
 LOG_MODULE_REGISTER(golioth_magtag, LOG_LEVEL_DBG);
+#include <soc/soc_memory_layout.h>
 
-/* MagTag specific hardware includes */
 #include "epaper/EPD_2in9d.h"
 #include "epaper/ImageData.h"
-#include "ws2812/ws2812_control.h"
-
-/* Golioth platform includes */
-#include <net/coap.h>
-#include <net/golioth/system_client.h>
-#include <net/golioth/wifi.h>
-
-static struct golioth_client *client = GOLIOTH_SYSTEM_CLIENT_GET();
-
-/*
- * In the `main` function, this function is registed to be
- * called when the device receives a packet from the Golioth server.
- */
-static void golioth_on_message(struct golioth_client *client,
-			       struct coap_packet *rx)
-{
-	uint16_t payload_len;
-	const uint8_t *payload;
-	uint8_t type;
-
-	type = coap_header_get_type(rx);
-	payload = coap_packet_get_payload(rx, &payload_len);
-
-	if (!IS_ENABLED(CONFIG_LOG_BACKEND_GOLIOTH) && payload) {
-		LOG_HEXDUMP_DBG(payload, payload_len, "Payload");
-	}
-}
 
 void main(void)
 {
 	LOG_DBG("Start MagTag Hello demo");
 
-	/* WiFi */
-	if (IS_ENABLED(CONFIG_GOLIOTH_SAMPLE_WIFI)) {
-		LOG_INF("Connecting to WiFi");
-		wifi_connect();
-	}
+	uint8_t *m1;
+	uint8_t *m2;
+	m1 = k_malloc(296*16);
+	m2 = k_malloc(296*16);
+	if (esp_ptr_external_ram(m1)) LOG_INF("External SPI successful!");
 
-	client->on_message = golioth_on_message;
-	golioth_system_client_start();
+	m1[0] = 72;
+	m1[1] = 27;
+	LOG_INF("m1=%d, m1+1=%d",m1[0], m1[1]);
 
-
-	/* Initialize MagTag hardware */
-	ws2812_init();
-	/* show two blue pixels to show until we connect to Golioth */
-	leds_immediate(BLACK, BLUE, BLUE, BLACK);
 	epaper_init();
 
-	/* wait until we've connected to golioth */
-	while (golioth_ping(client) != 0)
-	{
-		k_msleep(1000);
-	}
-	/* turn LEDs green to indicate connection */
-	leds_immediate(GREEN, GREEN, GREEN, GREEN);
 	epaper_autowrite("Connected to Golioth!", 21);
 
+	//memcpy(&m1, &gImage_2in9, 296*16);
+	for (uint16_t i=0; i<296*16; i++) {
+		m1[i] = ~gImage_2in9[i];
+		if ((i%16)%2==0) m2[i] = 0xff;
+		else m2[i] = 0x00;
+	}
+	EPD_2IN9D_Init();
+	EPD_2IN9D_Clear();
+	EPD_2IN9D_Display(m1);
+	k_sleep(K_SECONDS(5));
+	while (1)
+	{
+		EPD_2IN9D_DisplaySwap(m1, m2);
+		k_sleep(K_SECONDS(3));
+		EPD_2IN9D_DisplaySwap(m2, m1);
+		k_sleep(K_SECONDS(3));
+	}
 
 	int counter = 0;
 	int err;
 	while (true) {
 		/* Send hello message to the Golioth Cloud */
 		LOG_INF("Sending hello! %d", counter);
-		err = golioth_send_hello(client);
-		if (err) {
-			LOG_WRN("Failed to send hello!");
-		}
-		else
-		{
-			/* Write messages on epaper for user feedback */
-			uint8_t sbuf[24];
-			snprintk(sbuf, sizeof(sbuf) - 1, "Sending hello! %d", counter);
-			epaper_autowrite(sbuf, strlen(sbuf));
-		}
+
+		/* Write messages on epaper for user feedback */
+		uint8_t sbuf[24];
+		snprintk(sbuf, sizeof(sbuf) - 1, "Sending hello! %d", counter);
+		epaper_autowrite(sbuf, strlen(sbuf));
+
 		++counter;
 		k_sleep(K_SECONDS(5));
 	}

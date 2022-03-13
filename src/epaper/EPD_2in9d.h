@@ -63,6 +63,7 @@
 void EPD_2IN9D_Init(void);
 void EPD_2IN9D_Clear(void);
 void EPD_2IN9D_Display(UBYTE *Image);
+void EPD_2IN9D_DisplaySwap(uint8_t *old, uint8_t *new);
 void EPD_2IN9D_DisplayPart(UBYTE *Image);
 void EPD_2IN9D_Sleep(void);
 void epaper_WriteLine(uint8_t *str, uint8_t str_len, uint8_t line);
