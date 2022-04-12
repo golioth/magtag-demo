@@ -62,9 +62,9 @@ depending on your operating system but should look something like this:
 Create a credentials file
 =========================
 
-Create a credentials file called ``credentials.overlay`` that contains your
+Create a credentials file called ``credentials.conf`` that contains your
 Golioth device psk-id/psk and your WiFi SSID/password. We have included an
-example called ``credentials.overlay_example`` as a starting point.
+example called ``credentials.conf_example`` as a starting point.
 
 Here is what the contents of that file should look like.
 
@@ -79,7 +79,7 @@ Here is what the contents of that file should look like.
 Build
 =====
 
-``west build -b esp32s2_saola . -D OVERLAY_CONFIG=credentials.overlay -p``
+``west build -b esp32s2_saola . -D OVERLAY_CONFIG=credentials.conf -p``
 
 Flash
 =====
