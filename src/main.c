@@ -18,146 +18,12 @@ LOG_MODULE_REGISTER(golioth_magtag, LOG_LEVEL_DBG);
 #include "epaper/EPD_2in9d.h"
 #include "ws2812/ws2812_control.h"
 #include "accelerometer/accel.h"
-#include "json/json-helper.h"
-#include <data/json.h>
 #include "buttons/buttons.h"
 
 volatile uint64_t debounce = 0;
 
 /* Golioth */
 static struct golioth_client *client = GOLIOTH_SYSTEM_CLIENT_GET();
-static struct coap_reply coap_replies[4];
-
-static int process_led_change(const struct coap_packet *response, uint8_t led_num)
-{
-	char str[160];
-	uint16_t payload_len;
-	const uint8_t *payload;
-
-	payload = coap_packet_get_payload(response, &payload_len);
-	if (!payload) {
-		LOG_WRN("packet did not contain data");
-		return -ENOMSG;
-	}
-
-	if (payload_len + 1 > ARRAY_SIZE(str)) {
-		payload_len = ARRAY_SIZE(str) - 1;
-	}
-
-	memcpy(str, payload, payload_len);
-	str[payload_len] = '\0';
-
-	LOG_DBG("payload: %s", log_strdup(str));
-
-	struct atomic_led new_led_values;
-	int ret = json_obj_parse(str, sizeof(str),
-			     atomic_led_descr,
-				 ARRAY_SIZE(atomic_led_descr),
-			     &new_led_values);
-
-	if (ret < 0)
-	{
-		LOG_ERR("Error parsing led_settings JSON: %d", ret);
-	}
-	else
-	{
-		LOG_DBG("JSON return code: %u", ret);
-		if (ret & (1<<0 | 1<<1))
-		{
-			LOG_INF("LED%d Color: %s State: %d", led_num, new_led_values.color, new_led_values.state);
-			set_leds(led_num, new_led_values.color, new_led_values.state);
-		}
-		ws2812_blit(strip, led_states, STRIP_NUM_PIXELS);
-	}
-
-	return 0;
-}
-
-static int on_led0_update(const struct coap_packet *response,
-		     struct coap_reply *reply,
-		     const struct sockaddr *from)
-{
-	return process_led_change(response, 0);
-}
-
-static int on_led1_update(const struct coap_packet *response,
-		     struct coap_reply *reply,
-		     const struct sockaddr *from)
-{
-	return process_led_change(response, 1);
-}
-
-static int on_led2_update(const struct coap_packet *response,
-		     struct coap_reply *reply,
-		     const struct sockaddr *from)
-{
-	return process_led_change(response, 2);
-}
-
-static int on_led3_update(const struct coap_packet *response,
-		     struct coap_reply *reply,
-		     const struct sockaddr *from)
-{
-	return process_led_change(response, 3);
-}
-
-/*
- * In the `main` function, this function is registed to be
- * called when the device connects to the Golioth server.
- */
-static void golioth_on_connect(struct golioth_client *client)
-{
-	struct coap_reply *observe_reply;
-	int err;
-
-	coap_replies_clear(coap_replies, ARRAY_SIZE(coap_replies));
-
-	
-
-	/*
-	 * Observe the data stored at `/observed` in LightDB.
-	 * When that data is updated, the `on_update` callback
-	 * will be called.
-	 * This will get the value when first called, even if
-	 * the value doesn't change.
-	 */
-	observe_reply = coap_reply_next_unused(coap_replies,
-					       ARRAY_SIZE(coap_replies));
-	err = golioth_lightdb_observe(client,
-				      GOLIOTH_LIGHTDB_PATH("led0"),
-				      COAP_CONTENT_FORMAT_TEXT_PLAIN,
-				      observe_reply, on_led0_update);
-	if (err) {
-		LOG_WRN("failed to observe lightdb path: %d", err);
-	}
-	observe_reply = coap_reply_next_unused(coap_replies,
-					       ARRAY_SIZE(coap_replies));
-	err = golioth_lightdb_observe(client,
-				      GOLIOTH_LIGHTDB_PATH("led1"),
-				      COAP_CONTENT_FORMAT_TEXT_PLAIN,
-				      observe_reply, on_led1_update);
-	if (err) {
-		LOG_WRN("failed to observe lightdb path: %d", err);
-	}
-	observe_reply = coap_reply_next_unused(coap_replies,
-					       ARRAY_SIZE(coap_replies));
-	err = golioth_lightdb_observe(client,
-				      GOLIOTH_LIGHTDB_PATH("led2"),
-				      COAP_CONTENT_FORMAT_TEXT_PLAIN,
-				      observe_reply, on_led2_update);
-	if (err) {
-		LOG_WRN("failed to observe lightdb path: %d", err);
-	}
-	observe_reply = coap_reply_next_unused(coap_replies,
-					       ARRAY_SIZE(coap_replies));
-	err = golioth_lightdb_observe(client,
-				      GOLIOTH_LIGHTDB_PATH("led3"),
-				      COAP_CONTENT_FORMAT_TEXT_PLAIN,
-				      observe_reply, on_led3_update);
-	if (err) {
-		LOG_WRN("failed to observe lightdb path: %d", err);
-	}
-}
 
 static int record_accelerometer(const struct device *sensor)
 {
@@ -177,30 +43,32 @@ static int record_accelerometer(const struct device *sensor)
 	if (err) {
 		return err;
 	}
-	snprintk(str, sizeof(str) -1, 
-			"%.4f %.4f %.4f",
-			sensor_value_to_double(&accel[0]),
-			sensor_value_to_double(&accel[1]),
-			sensor_value_to_double(&accel[2])
-			);
-	epaper_autowrite(str, strlen(str));
 	return 0;
 }
 
-/*
- * In the `main` function, this function is registed to be
- * called when the device receives a packet from the Golioth server.
- */
-static void golioth_on_message(struct golioth_client *client,
-			       struct coap_packet *rx)
+/* Timers for sound (PWM not yet implemented in ESP32s2 */
+#define ACTIVATE_NODE DT_ALIAS(activate)
+#define SOUND_NODE DT_ALIAS(sound)
+static const struct gpio_dt_spec act = GPIO_DT_SPEC_GET(ACTIVATE_NODE, gpios);
+static const struct gpio_dt_spec snd = GPIO_DT_SPEC_GET(SOUND_NODE, gpios);
+
+void make_sound_timer_handler(struct k_timer *dummy)
 {
-	/*
-	 * In order for the observe callback to be called,
-	 * we need to call this function.
-	 */
-	coap_response_received(rx, NULL, coap_replies,
-			       ARRAY_SIZE(coap_replies));
+    gpio_pin_toggle_dt(&snd);
 }
+
+K_TIMER_DEFINE(make_sound_timer, make_sound_timer_handler, NULL);
+
+void end_note_timer_handler(struct k_timer *dummy)
+{
+    k_timer_stop(&make_sound_timer);
+	gpio_pin_set_dt(&snd, 0);
+	gpio_pin_set_dt(&act, 0);
+}
+
+K_TIMER_DEFINE(end_note_timer, end_note_timer_handler, NULL);
+uint16_t notes[4] = {764,580,470,400};
+
 
 /**
  * @brief Handle button presses and update LEDs
@@ -223,7 +91,7 @@ void button_pressed(const struct device *dev, struct gpio_callback *cb,
 	else
 	{
 		/* register the timeout value for the next press */
-		debounce = sys_clock_timeout_end_calc(K_MSEC(100));
+		debounce = sys_clock_timeout_end_calc(K_MSEC(200));
 	}
 
 	/* Array to check which button was pressed */
@@ -238,28 +106,48 @@ void button_pressed(const struct device *dev, struct gpio_callback *cb,
 	for (uint8_t i=0; i<4; i++) {
 		if (button_result[i] != 0)
 		{
-			LOG_INF("Button%d pressed.", i);
-			if (led_states[i].state < 0) continue; //Indicates no cloud sync yet
+			LOG_INF("Button %c pressed", 'A'+i);
 			int8_t toggle_val = led_states[i].state > 0 ? 0 : 1;
 			led_states[i].state = toggle_val;
 			/* update local LED output immediately */
 			ws2812_blit(strip, led_states, STRIP_NUM_PIXELS);
 
+			gpio_pin_set_dt(&act, 1);
+			k_timer_start(&make_sound_timer, K_USEC(notes[i]), K_USEC(notes[i]));
+			k_timer_start(&end_note_timer, K_MSEC(200), K_NO_WAIT);
+
 			/* Build the endpoint with the correct LED number */
 			uint8_t endpoint[32];
-			snprintk(endpoint, sizeof(endpoint)-1, ".d/led%d/state",	i);
+			snprintk(endpoint, sizeof(endpoint)-1, ".d/Button_%c", 'A'+i);
 			/* convert the toggle_val digit into a string */
-			char state_buf[2] = { '0'+toggle_val, 0 };
+			char false_buf[6] = "false";
+			char true_buf[5] = "true";
+			char *state_p = toggle_val==0 ? false_buf : true_buf;
 
 			/* Update the LightDB state endpoint on the Golioth Cloud */
 			int err = golioth_lightdb_set(client,
 				  endpoint,
 				  COAP_CONTENT_FORMAT_TEXT_PLAIN,
-				  state_buf, 1);
+				  state_p, strlen(state_p));
 			if (err) {
-				LOG_WRN("Failed to update led%d_state: %d", i, err);
+				LOG_WRN("Failed to update Button_%c: %d", 'A'+i, err);
 			}
 		}
+	}
+}
+
+static void golioth_on_message(struct golioth_client *client,
+			       struct coap_packet *rx)
+{
+	uint16_t payload_len;
+	const uint8_t *payload;
+	uint8_t type;
+
+	type = coap_header_get_type(rx);
+	payload = coap_packet_get_payload(rx, &payload_len);
+
+	if (!IS_ENABLED(CONFIG_LOG_BACKEND_GOLIOTH) && payload) {
+		LOG_HEXDUMP_DBG(payload, payload_len, "Payload");
 	}
 }
 
@@ -283,7 +171,12 @@ void main(void)
 	/* buttons */
 	buttons_init(button_pressed);
 
-	client->on_connect = golioth_on_connect;
+	/* Setup pins for sound */
+	gpio_pin_configure_dt(&act, GPIO_OUTPUT_ACTIVE);
+	gpio_pin_configure_dt(&snd, GPIO_OUTPUT_ACTIVE);
+	gpio_pin_set_dt(&act, 0);
+
+	/* Start Golioth */
 	client->on_message = golioth_on_message;
 	golioth_system_client_start();
 
@@ -296,15 +189,17 @@ void main(void)
 		k_msleep(1000);
 	}
 	/* write successful connection message to screen */
+	LOG_INF("Connected to Golioth!");
 	epaper_autowrite("Connected to Golioth!", 21);
+	led_states[0].color = RED; led_states[0].state = 1;
+	led_states[1].color = GREEN; led_states[1].state = 1;
+	led_states[2].color = BLUE; led_states[2].state = 1;
+	led_states[3].color = YELLOW; led_states[3].state = 1;
+	ws2812_blit(strip, led_states, STRIP_NUM_PIXELS);
 
 	int err;
 	while (true) {
-		err = record_accelerometer(sensor);
-		if (err) {
-			LOG_WRN("Failed to send accel data to LightDB stream: %d", err);
-		}
-
+		record_accelerometer(sensor);
 		k_sleep(K_SECONDS(5));
 	}
 }

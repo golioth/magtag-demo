@@ -43,6 +43,8 @@
         sw1 = &button1;
 		sw2 = &button2;
         sw3 = &button3;
+        activate = &active;
+		sound = &sound;
 	};
 
 	leds {
@@ -70,6 +72,14 @@
 		rst: reset {
             gpios = <&gpio0 6 GPIO_ACTIVE_HIGH>;
             label = "reset";
+        };
+        active: active_pin {
+            gpios = <&gpio0 16 GPIO_ACTIVE_HIGH>;
+            label = "Activate speaker";
+        };
+		sound: sound_pin {
+            gpios = <&gpio0 17 GPIO_ACTIVE_HIGH>;
+            label = "Drive speaker";
         };
     };
 

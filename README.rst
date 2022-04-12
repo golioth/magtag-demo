@@ -1,39 +1,15 @@
-Golioth Developer Training: Kitchen-Sink
+Golioth Developer Training: Golioth-Demo
 ########################################
 
-This demo combines a number of demonstrations:
+For in-person trainings, this demo comes pre-provisioned with both WiFi and
+Golioth credentials to begin the workshop.
 
-* LEDs can be toggled on or off by the buttons or the Golioth console
-* LED colors can be changed via the Golioth console
-* Accelerometer data sent to LightDB stream every few seconds
-* Accelerometer data will be displayed on the ePaper screen
+This demo includes:
 
-For LED control to work, this demo expects a LightDB state object in this
-format:
-
- .. code-block:: json
-
-    {
-      "magtag": {
-        "led0_color": "red",
-        "led0_state": 1,
-        "led1_color": "green",
-        "led1_state": 1,
-        "led2_color": "blue",
-        "led2_state": 1,
-        "led3_color": "red",
-        "led3_state": 1
-      }
-    }
-
-You can add this structure using the ``goliothctl`` command line tool:
-
-.. code-block:: bash
-
-   # Make sure you've authenticated the CLI tool
-   goliothctl login
-   # Send JSON object to LightDB state
-   goliothctl lightdb set <device-name> / -b '{"led0":{"color":"red","state":1},"led1":{"color":"green","state":1},"led2":{"color":"blue","state":1},"led3":{"color":"red","state":1}}'
+* Light and sound reaction to button presses
+* Button presses recorded on Golioth via network logging
+* LED on/off status sent to Light DB state
+* Accelerometer readings sent to LIghtDB stream every 5 seconds
 
 Hardware: Adafruit MagTag
 *************************
@@ -115,13 +91,11 @@ initialized. That process can take several seconds, at which point the two cente
 LEDs will turn blue to indicate the board is trying to establish an internet
 connection and connect with Golioth.
 
-When a connection with Golioth is achieved, the `magtag` endpoint will be
-observed to update the color and state of the LEDs. The user may change this
-values in `the Golioth console`_. The buttons can be used to toggle the LED
-state, which will be updated in the cloud.
-
-Accelerometer data will be published to the LightDB stream every few seconds,
-and displayed on the ePaper screen.
+When a connection with Golioth is achieved, the LEDs will light up
+red/green/blue/yellow. Pressing a button will toggle the LED on/off and play a
+tone. This button press will be reported to the Logs on `the Golioth Console`_, and
+the state of the LED will be updated in the LightDB state. Every 5 seconds,
+accelerometer data will be recorded on LightDB Stream.
 
 .. _Adafruit MagTag board: https://learn.adafruit.com/adafruit-magtag
 .. _MagTag purchase link: https://www.adafruit.com/magtag
