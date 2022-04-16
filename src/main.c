@@ -204,6 +204,19 @@ void main(void)
 	led_states[3].color = YELLOW; led_states[3].state = 1;
 	ws2812_blit(strip, led_states, STRIP_NUM_PIXELS);
 
+	/* write starting button values to LightDB state */
+	uint8_t endpoint[32];
+	for (uint8_t i=0; i<4; i++) {
+		snprintk(endpoint, sizeof(endpoint)-1, ".d/Button_%c", 'A'+i);
+		int err = golioth_lightdb_set(client,
+				  endpoint,
+				  COAP_CONTENT_FORMAT_TEXT_PLAIN,
+				  "true", 4);
+		if (err) {
+			LOG_WRN("Failed to update Button_%c: %d", 'A'+i, err);
+		}
+	}
+
 	int err;
 	while (true) {
 		record_accelerometer(sensor);
