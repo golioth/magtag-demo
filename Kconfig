@@ -21,6 +21,12 @@ config DNS_SERVER_IP_ADDRESSES
 config DNS_SERVER1
 	default "1.1.1.1"
 
+config MAGTAG_NAME
+	string "MagTag Name"
+	default "MagTag-One"
+	help
+		Used during automatic provisioning for workshops
+
 endif # DNS_RESOLVER
 
 source "Kconfig.zephyr"

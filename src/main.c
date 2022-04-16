@@ -155,6 +155,12 @@ void main(void)
 {
 	LOG_DBG("Start MagTag demo");
 
+	#ifdef CONFIG_MAGTAG_NAME
+	LOG_INF("Device name: %s", CONFIG_MAGTAG_NAME);
+	#else
+	#define CONFIG_MAGTAG_NAME "MagTag"
+	#endif
+
 	/* Accelerometer */
 	accelerometer_init();
 
@@ -182,6 +188,7 @@ void main(void)
 
 	/* ePaper */
 	epaper_init();
+	epaper_WriteDoubleLine(CONFIG_MAGTAG_NAME, strlen(CONFIG_MAGTAG_NAME), 7);
 
 	/* wait until we've connected to golioth */
 	while (golioth_ping(client) != 0)
@@ -189,7 +196,7 @@ void main(void)
 		k_msleep(1000);
 	}
 	/* write successful connection message to screen */
-	LOG_INF("Connected to Golioth!");
+	LOG_INF("Connected to Golioth!: %s", CONFIG_MAGTAG_NAME);
 	epaper_autowrite("Connected to Golioth!", 21);
 	led_states[0].color = RED; led_states[0].state = 1;
 	led_states[1].color = GREEN; led_states[1].state = 1;
