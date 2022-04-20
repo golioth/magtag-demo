@@ -22,6 +22,9 @@ LOG_MODULE_REGISTER(golioth_magtag, LOG_LEVEL_DBG);
 
 volatile uint64_t debounce = 0;
 
+/* Preprocessor Value */
+#define SPEAKER_MUTE
+
 /* Golioth */
 static struct golioth_client *client = GOLIOTH_SYSTEM_CLIENT_GET();
 
@@ -113,9 +116,10 @@ void button_pressed(const struct device *dev, struct gpio_callback *cb,
 			ws2812_blit(strip, led_states, STRIP_NUM_PIXELS);
 
 			gpio_pin_set_dt(&act, 1);
+			#ifndef SPEAKER_MUTE
 			k_timer_start(&make_sound_timer, K_USEC(notes[i]), K_USEC(notes[i]));
 			k_timer_start(&end_note_timer, K_MSEC(200), K_NO_WAIT);
-
+			#endif
 			/* Build the endpoint with the correct LED number */
 			uint8_t endpoint[32];
 			snprintk(endpoint, sizeof(endpoint)-1, ".d/Button_%c", 'A'+i);
