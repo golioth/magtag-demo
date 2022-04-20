@@ -23,7 +23,7 @@ LOG_MODULE_REGISTER(golioth_magtag, LOG_LEVEL_DBG);
 volatile uint64_t debounce = 0;
 
 /* Preprocessor Value */
-#define SPEAKER_MUTE
+//#define SPEAKER_MUTE
 
 /* Golioth */
 static struct golioth_client *client = GOLIOTH_SYSTEM_CLIENT_GET();
