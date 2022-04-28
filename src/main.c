@@ -10,8 +10,13 @@
 /* 1000 msec = 1 sec */
 #define SLEEP_TIME_MS   1000
 
-/* The devicetree node identifier for the "led0" alias. */
-#define LED0_NODE DT_ALIAS(led0)
+/* (Required) Create a node identifier for the project's on-board led */
+  /* MagTag - red led "D13" - pin 13 - assigned in esp32s2_saola.overlay */
+  /* -- The .overlay file is used for device specific info so main.c stays generic -- */
+/* 3 options to create a node identifier*/
+#define LED0_NODE DT_ALIAS(board_led) // from .overlay to .c file, the (-) changes to (_)
+// #define LED0_NODE DT_NODELABEL(led0)
+// #define LED0_NODE DT_PATH(leds, led_0)
 
 /*
  * A build error on this line means your board is unsupported.
