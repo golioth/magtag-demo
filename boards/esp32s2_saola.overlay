@@ -1,6 +1,5 @@
 &i2c1 {
-	sda-pin = <33>;
-	scl-pin = <34>;
+    pinctrl-0 = <&i2c1_sda_gpio33 &i2c1_scl_gpio34>;
 	status = "okay";
 
 	lis3dh@19 {
@@ -11,8 +10,7 @@
 };
 
 &spi2 {
-    mosi-pin = < 1 >;
-	sclk-pin = < 0 >;
+    pinctrl-0 = <&spim2_mosi_gpio1 &spim2_sclk_gpio0>;
 	led_strip: ws2812@0 {
 		compatible = "worldsemi,ws2812-spi";
 		label = "WS2812";
@@ -26,6 +24,27 @@
 		spi-one-frame = <0xF8>;
 		spi-zero-frame = <0xE0>;
 		color-mapping = <2 1 3>;
+	};
+};
+
+&pinctrl {
+    i2c1_sda_gpio33: i2c1_sda_gpio33 {
+        pinmux = <I2C1_SDA_GPIO33>;
+        bias-pull-up;
+        drive-open-drain;
+        output-high;
+    };
+    i2c1_scl_gpio34: i2c1_scl_gpio34 {
+        pinmux = <I2C1_SCL_GPIO34>;
+        bias-pull-up;
+        drive-open-drain;
+        output-high;
+    };
+    spim2_mosi_gpio1: spim2_mosi_gpio1 {
+        pinmux = <SPIM2_MOSI_GPIO1>;
+    };
+    spim2_sclk_gpio0: spim2_sclk_gpio0 {
+		pinmux = <SPIM2_SCLK_GPIO0>;
 	};
 };
 
