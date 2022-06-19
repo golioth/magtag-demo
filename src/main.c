@@ -18,7 +18,7 @@ LOG_MODULE_REGISTER(golioth_magtag, LOG_LEVEL_DBG);
 /* Golioth platform includes */
 #include <net/coap.h>
 #include <net/golioth/system_client.h>
-#include <net/golioth/wifi.h>
+#include <samples/common/wifi.h>
 
 static struct golioth_client *client = GOLIOTH_SYSTEM_CLIENT_GET();
 
