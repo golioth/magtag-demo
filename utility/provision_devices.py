@@ -6,34 +6,28 @@ import random
 import shutil
 import sys
 
-wifi_ssid = "Golioth"
+######################################################
+# Reminder: select desired project with goliothctl:  #
+#                                                    #
+# goliothctl config set projectId developer-training #
+#                                                    #
+######################################################
+
+wifi_ssid = "golioth"
 wifi_pw = "training"
 project_id = "developer-training"
 
 build_dir = "/tmp/magtag-build"
 bin_output_dir = "/home/mike/Desktop/generated_binaries"
 
-venv = 'source /home/mike/compile/zephyrproject/.venv/bin/activate'
-outoftree = '''source /home/mike/compile/zephyrproject/zephyr/zephyr-env.sh'''
-exports = "export ESPRESSIF_TOOLCHAIN_PATH=\"${HOME}/.espressif/tools/zephyr/\"; export ZEPHYR_TOOLCHAIN_VARIANT=\"espressif\""
-build = '''/home/mike/compile/zephyrproject/.venv/bin/west build -b esp32s2_saola /home/mike/golioth-compile/magtag-demo -d %s -DCONFIG_MAGTAG_NAME=\\\"{}\\\" -DCONFIG_GOLIOTH_SYSTEM_CLIENT_PSK_ID=\\\"{}\\\" -DCONFIG_GOLIOTH_SYSTEM_CLIENT_PSK=\\\"{}\\\" -DCONFIG_ESP32_WIFI_SSID=\\\"%s\\\" -DCONFIG_ESP32_WIFI_PASSWORD=\\\"%s\\\"''' % (build_dir, wifi_ssid, wifi_pw)
+venv = 'source /home/mike/golioth-zephyr-workspace/.venv/bin/activate'
+outoftree = '''source /home/mike/golioth-zephyr-workspace/zephyr/zephyr-env.sh'''
+build = '''/home/mike/golioth-zephyr-workspace/.venv/bin/west build -b esp32s2_saola /home/mike/golioth-compile/magtag-demo -d %s -DCONFIG_MAGTAG_NAME=\\\"{}\\\" -DCONFIG_GOLIOTH_SYSTEM_CLIENT_PSK_ID=\\\"{}\\\" -DCONFIG_GOLIOTH_SYSTEM_CLIENT_PSK=\\\"{}\\\" -DCONFIG_ESP32_WIFI_SSID=\\\"%s\\\" -DCONFIG_ESP32_WIFI_PASSWORD=\\\"%s\\\"''' % (build_dir, wifi_ssid, wifi_pw)
 
 
 #Random names from color/flower lists
 color_list = ["coral", "gold", "lime", "magenta", "purple", "yellow", "red", "blue", "green", "emerald", "bronze", "azure", "amber", "black", "cobalt", "crimson", "cyan", "jade", "olive", "plum"]
 flower_list = ["sweetpea", "stargazer", "hydrangea", "daffodil", "begonia", "camellia", "plumeria", "dahlia", "tulip", "iris", "lotus", "anemone", "orchid", "magnolia", "peony", "protea", "rose"]
-
-env = {
-    **os.environ,
-    "ESPRESSIF_TOOLCHAIN_PATH":"/home/mike/.espressif/tools/zephyr",
-    "ZEPHYR_TOOLCHAIN_VARIANT":"espressif"
-    }
-
-venv = '''. /home/mike/compile/zephyrproject/.venv/bin/activate'''
-cmd = '''/home/mike/compile/zephyrproject/.venv/bin/west build -b esp32s2_saola /home/mike/golioth-compile/magtag-demo -p'''
-proc = subprocess.Popen([venv, cmd], env=env, shell=True, stdout=subprocess.PIPE)
-for line in proc.stdout:
-    print(line) 
 
 def generate_names(name_count):
     name_dict = dict()
@@ -57,7 +51,7 @@ def provision_device(magtag_name, psk_id, psk):
 
 def build_firmware(magtag_name, psk_id, psk):
     print("\nBuilding firmware\n")
-    cmd="; ".join([venv, outoftree, exports, build.format(magtag_name, psk_id+"@"+project_id, psk)])
+    cmd="; ".join([venv, outoftree, build.format(magtag_name, psk_id+"@"+project_id, psk)])
     print("Running:\n%s\n" % cmd)
     proc=subprocess.Popen(cmd, shell=True, stdout=PIPE, stderr=PIPE, executable='/bin/bash', universal_newlines=True)
     for i in proc.communicate():
