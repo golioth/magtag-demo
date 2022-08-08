@@ -660,11 +660,6 @@ void epaper_autowrite(uint8_t *str, uint8_t str_len)
             EPD_2IN9D_Clear();
             EPD_2IN9D_SetPartReg();
         }          
-        else if (line%8 == 0) {
-            EPD_2in9D_PartialClear();
-            EPD_2IN9D_TurnOnDisplay();
-            EPD_2in9D_PartialClear();
-        }
     }
     epaper_WriteDoubleLine(str, str_len, line%8);
     EPD_2IN9D_TurnOnDisplay();
