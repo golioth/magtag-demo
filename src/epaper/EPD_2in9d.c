@@ -190,7 +190,7 @@ static void EPD_2IN9D_SetPartReg(void)
     EPD_2IN9D_SendData(0xbf);     //LUT from OTP，128x296
 
     EPD_2IN9D_SendCommand(0x30);	//PLL setting
-    EPD_2IN9D_SendData(0x3a);     // 3a 100HZ   29 150Hz 39 200HZ	31 171HZ
+    EPD_2IN9D_SendData(0x3C);     // 3a 100HZ   29 150Hz 39 200HZ	31 171HZ
 
     EPD_2IN9D_SendCommand(0x61);	//resolution setting
     EPD_2IN9D_SendData(EPD_2IN9D_WIDTH);
@@ -308,23 +308,12 @@ void EPD_2IN9D_Display(UBYTE *Image)
     Width = (EPD_2IN9D_WIDTH % 8 == 0)? (EPD_2IN9D_WIDTH / 8 ): (EPD_2IN9D_WIDTH / 8 + 1);
     Height = EPD_2IN9D_HEIGHT;
 
-    EPD_2IN9D_SendCommand(0x10);
-    for (UWORD j = 0; j < Height; j++) {
-        for (UWORD i = 0; i < Width; i++) {
-            EPD_2IN9D_SendData(0x00);
-        }
-    }
-    // Dev_Delay_ms(10);
-
     EPD_2IN9D_SendCommand(0x13);
     for (UWORD j = 0; j < Height; j++) {
         for (UWORD i = 0; i < Width; i++) {
             EPD_2IN9D_SendData(Image[i + j * Width]);
         }
     }
-    // Dev_Delay_ms(10);
-
-    EPD_2IN9D_TurnOnDisplay();
 }
 
 /******************************************************************************
@@ -598,6 +587,29 @@ void EPD_2IN9D_FullRefreshDoubleLine(uint8_t *str, uint8_t str_len)
     EPD_2IN9D_Sleep();
 }
 
+void EPD_2in9D_PartialClear(void) {
+    EPD_2IN9D_SendCommand(0x91);		//This command makes the display enter partial mode
+    EPD_2IN9D_SendCommand(0x90);		//resolution setting
+    EPD_2IN9D_SendData(0);           //x-start
+    EPD_2IN9D_SendData(EPD_2IN9D_WIDTH - 1);       //x-end
+
+    EPD_2IN9D_SendData(0);
+    EPD_2IN9D_SendData(0);     //y-start
+    EPD_2IN9D_SendData(EPD_2IN9D_HEIGHT / 256);
+    EPD_2IN9D_SendData(EPD_2IN9D_HEIGHT % 256 - 1);  //y-end
+    EPD_2IN9D_SendData(0x01);
+
+    UWORD Width;
+    Width = (EPD_2IN9D_WIDTH % 8 == 0)? (EPD_2IN9D_WIDTH / 8 ): (EPD_2IN9D_WIDTH / 8 + 1);
+    
+    /* send data */
+    EPD_2IN9D_SendCommand(0x13);
+    for (UWORD j = 0; j < EPD_2IN9D_HEIGHT; j++) {
+        for (UWORD i = 0; i < Width; i++) {
+            EPD_2IN9D_SendData(0xFF);
+        }
+    }
+}
 /**
  * @brief Clear the displays
  *
@@ -623,13 +635,13 @@ void epaper_init(void) {
     LOG_INF("ePaper Init and Clear");
     EPD_2IN9D_Init();
     EPD_2IN9D_Clear();
-    EPD_2IN9D_SetPartReg();
 
     LOG_INF("Show Golioth logo");
-    EPD_2IN9D_DisplayPart((void *)gImage_2in9); /* cast because function is not expecting a CONST array) */
+    EPD_2IN9D_Display((void *)gImage_2in9); /* cast because function is not expecting a CONST array) */
         
     EPD_2IN9D_TurnOnDisplay();
-    EPD_2IN9D_DisplayPart((void *)gImage_2in9); /* cast because function is not expecting a CONST array) */
+    EPD_2IN9D_Display((void *)gImage_2in9); /* cast because function is not expecting a CONST array) */
+    EPD_2IN9D_SetPartReg();
 }
 
 /**
@@ -642,24 +654,22 @@ void epaper_init(void) {
 void epaper_autowrite(uint8_t *str, uint8_t str_len)
 {
     static uint8_t line = 0;
-    if (line > 7)
-    {
-        EPD_2IN9D_Init();
-        EPD_2IN9D_Clear();
-        EPD_2IN9D_SetPartReg();
-
-        epaper_WriteDoubleLine(str, str_len, 0);
-        EPD_2IN9D_TurnOnDisplay();
-        epaper_WriteDoubleLine(str, str_len, 0);
-        line = 1;
+    if (line > 0) {
+        if (line%32 == 0) {
+            EPD_2IN9D_Init();
+            EPD_2IN9D_Clear();
+            EPD_2IN9D_SetPartReg();
+        }          
+        else if (line%8 == 0) {
+            EPD_2in9D_PartialClear();
+            EPD_2IN9D_TurnOnDisplay();
+            EPD_2in9D_PartialClear();
+        }
     }
-    else
-    {
-        epaper_WriteDoubleLine(str, str_len, line);
-        EPD_2IN9D_TurnOnDisplay();
-        epaper_WriteDoubleLine(str, str_len, line);
-        ++line;
-    }
+    epaper_WriteDoubleLine(str, str_len, line%8);
+    EPD_2IN9D_TurnOnDisplay();
+    epaper_WriteDoubleLine(str, str_len, line%8);
+    ++line;
 }
 
 /******************************************************************************
