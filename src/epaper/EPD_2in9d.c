@@ -260,7 +260,8 @@ void EPD_2IN9D_Init(void)
     EPD_2IN9D_SendCommand(0X50);			//VCOM AND DATA INTERVAL SETTING			
     EPD_2IN9D_SendData(0x97);		//WBmode:VBDF 17|D7 VBDW 97 VBDB 57		WBRmode:VBDF F7 VBDW 77 VBDB 37  VBDR B7
     
-    EPD_2IN9D_SetPartReg();
+    EPD_2IN9D_SendCommand(0x04);
+    EPD_2IN9D_ReadBusy();
 }
 
 /******************************************************************************
@@ -622,6 +623,7 @@ void epaper_init(void) {
     LOG_INF("ePaper Init and Clear");
     EPD_2IN9D_Init();
     EPD_2IN9D_Clear();
+    EPD_2IN9D_SetPartReg();
 
     LOG_INF("Show Golioth logo");
     EPD_2IN9D_DisplayPart((void *)gImage_2in9); /* cast because function is not expecting a CONST array) */
@@ -644,7 +646,8 @@ void epaper_autowrite(uint8_t *str, uint8_t str_len)
     {
         EPD_2IN9D_Init();
         EPD_2IN9D_Clear();
-//         EPD_2IN9D_FullRefreshDoubleLine(str, str_len);
+        EPD_2IN9D_SetPartReg();
+
         epaper_WriteDoubleLine(str, str_len, 0);
         EPD_2IN9D_TurnOnDisplay();
         epaper_WriteDoubleLine(str, str_len, 0);
