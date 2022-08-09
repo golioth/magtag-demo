@@ -58,6 +58,8 @@
 #include <logging/log.h>
 LOG_MODULE_REGISTER(golioth_epaper, LOG_LEVEL_DBG);
 
+bool _display_asleep = true;
+
 /**
  * partial screen update LUT
 **/
@@ -119,6 +121,7 @@ static void EPD_2IN9D_Reset(void)
     DEV_Delay_ms(10);
     DEV_Digital_Write(EPD_RST_PIN, 1);
     DEV_Delay_ms(10);
+    _display_asleep = false;
 }
 
 /******************************************************************************
@@ -248,7 +251,7 @@ parameter:
 ******************************************************************************/
 void EPD_2IN9D_Init(void)
 {
-    EPD_2IN9D_Reset();
+    if (_display_asleep) { EPD_2IN9D_Reset(); }
     EPD_2IN9D_SendCommand(0x00);			//panel setting
     EPD_2IN9D_SendData(0x1f);		//LUT from OTP，KW-BF   KWR-AF	BWROTP 0f	BWOTP 1f
 
@@ -530,10 +533,6 @@ static void EPD_2IN9D_SendDoubleColumn(uint8_t *str, uint8_t str_len, bool full)
 void epaper_WriteDoubleLine(uint8_t *str, uint8_t str_len, uint8_t line)
 {
     if (line > 7) return;
-//     EPD_2IN9D_Init();
-    /* Set partial Windows */
-//     EPD_2IN9D_Init();
-//     EPD_2IN9D_SetPartReg();
     EPD_2IN9D_SendCommand(0x91);		//This command makes the display enter partial mode
     EPD_2IN9D_SendPartialLineAddr(line);    
     /* send data */
@@ -543,8 +542,6 @@ void epaper_WriteDoubleLine(uint8_t *str, uint8_t str_len, uint8_t line)
     EPD_2IN9D_SendDoubleColumn(str, str_len, false);
 
     EPD_2IN9D_SendCommand(0x92);
-    /* Set partial refresh */    
-//     EPD_2IN9D_Sleep();
 }
 
 /**
@@ -619,6 +616,7 @@ void epaper_FullClear(void) {
  *
  */
 void epaper_init(void) {
+    _display_asleep = true;
     LOG_INF("Setup ePaper pins");
   	DEV_Module_Init();
 
@@ -645,16 +643,11 @@ void epaper_autowrite(uint8_t *str, uint8_t str_len)
 {
     static uint8_t line = 0;
     if (line > 0) {
-        if (line%32 == 0) {
+        if ((line%32 == 0) || _display_asleep) {
             EPD_2IN9D_Init();
             EPD_2IN9D_Clear();
             EPD_2IN9D_SetPartReg();
         }          
-        if (line%8 == 0) {
-            EPD_2IN9D_DisplayPart((void *)gImage_2in9);
-            EPD_2IN9D_TurnOnDisplay();
-            EPD_2IN9D_DisplayPart((void *)gImage_2in9);
-        }
     }
     epaper_WriteDoubleLine(str, str_len, line%8);
     EPD_2IN9D_TurnOnDisplay();
@@ -674,4 +667,5 @@ void EPD_2IN9D_Sleep(void)
     EPD_2IN9D_ReadBusy();
     EPD_2IN9D_SendCommand(0X07);  	//deep sleep
     EPD_2IN9D_SendData(0xA5);
+    _display_asleep = true;
 }
