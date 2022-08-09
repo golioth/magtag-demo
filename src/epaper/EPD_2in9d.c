@@ -264,6 +264,37 @@ void EPD_2IN9D_Init(void)
     EPD_2IN9D_ReadBusy();
 }
 
+
+void EPD_2IN9D_SendRepeatedBytePattern(uint8_t byte_pattern, uint16_t how_many) {
+    for (uint16_t i = 0; i < how_many; i++) {
+        EPD_2IN9D_SendData(byte_pattern);
+    }
+}
+
+void EPD_2IN9D_SendPartialAddr(uint16_t x, uint16_t y, uint16_t w, uint16_t h) {
+    EPD_2IN9D_SendCommand(0x90);		//resolution setting
+    EPD_2IN9D_SendData(x);           //x-start
+    EPD_2IN9D_SendData(x+w - 1);       //x-end
+
+    EPD_2IN9D_SendData(0);
+    EPD_2IN9D_SendData(y);     //y-start
+    EPD_2IN9D_SendData((y+h) / 256);
+    EPD_2IN9D_SendData((y+h) % 256 - 1);  //y-end
+    EPD_2IN9D_SendData(0x01);
+}
+
+void EPD_2IN9D_SendPartialLineAddr(uint8_t line) {
+    EPD_2IN9D_SendCommand(0x90);		//resolution setting
+    EPD_2IN9D_SendData(line*16);           //x-start
+    EPD_2IN9D_SendData((line*16)+16 - 1);       //x-end
+
+    EPD_2IN9D_SendData(0);
+    EPD_2IN9D_SendData(0);     //y-start
+    EPD_2IN9D_SendData(296 / 256);
+    EPD_2IN9D_SendData(296 % 256 - 1);  //y-end
+    EPD_2IN9D_SendData(0x01);
+}
+
 /******************************************************************************
 function :	Clear screen
 parameter:
@@ -275,27 +306,15 @@ void EPD_2IN9D_Clear(void)
     Height = EPD_2IN9D_HEIGHT;
 
     EPD_2IN9D_SendCommand(0x13);
-    for (UWORD j = 0; j < Height; j++) {
-        for (UWORD i = 0; i < Width; i++) {
-            EPD_2IN9D_SendData(0xFF);
-        }
-    }
+    EPD_2IN9D_SendRepeatedBytePattern(0xFF, Width*Height);
 
     EPD_2IN9D_SendCommand(0x10);
-    for (UWORD j = 0; j < Height; j++) {
-        for (UWORD i = 0; i < Width; i++) {
-            EPD_2IN9D_SendData(0xFF);
-        }
-    }
+    EPD_2IN9D_SendRepeatedBytePattern(0xFF, Width*Height);
 
     EPD_2IN9D_TurnOnDisplay();
 
     EPD_2IN9D_SendCommand(0x13);
-    for (UWORD j = 0; j < Height; j++) {
-        for (UWORD i = 0; i < Width; i++) {
-            EPD_2IN9D_SendData(0xFF);
-        }
-    }
+    EPD_2IN9D_SendRepeatedBytePattern(0xFF, Width*Height);
 }
 
 /******************************************************************************
@@ -325,26 +344,8 @@ void EPD_2IN9D_DisplayPart(UBYTE *Image)
     /* Set partial Windows */
     EPD_2IN9D_SetPartReg();
     EPD_2IN9D_SendCommand(0x91);		//This command makes the display enter partial mode
-    EPD_2IN9D_SendCommand(0x90);		//resolution setting
-    EPD_2IN9D_SendData(0);           //x-start
-    EPD_2IN9D_SendData(EPD_2IN9D_WIDTH - 1);       //x-end
-
-    EPD_2IN9D_SendData(0);
-    EPD_2IN9D_SendData(0);     //y-start
-    EPD_2IN9D_SendData(EPD_2IN9D_HEIGHT / 256);
-    EPD_2IN9D_SendData(EPD_2IN9D_HEIGHT % 256 - 1);  //y-end
-    EPD_2IN9D_SendData(0x01);
-
-    UWORD Width;
-    Width = (EPD_2IN9D_WIDTH % 8 == 0)? (EPD_2IN9D_WIDTH / 8 ): (EPD_2IN9D_WIDTH / 8 + 1);
-    
-    /* send data */
-    EPD_2IN9D_SendCommand(0x13);
-    for (UWORD j = 0; j < EPD_2IN9D_HEIGHT; j++) {
-        for (UWORD i = 0; i < Width; i++) {
-            EPD_2IN9D_SendData(Image[i + j * Width]);
-        }
-    }
+    EPD_2IN9D_SendPartialAddr(0, 0, EPD_2IN9D_WIDTH, EPD_2IN9D_HEIGHT);
+    EPD_2IN9D_Display(Image);
 }
 
 /**
@@ -517,17 +518,6 @@ static void EPD_2IN9D_SendDoubleColumn(uint8_t *str, uint8_t str_len, bool full)
     for (uint8_t i=0; i<vamp_count; i++) EPD_2IN9D_SendData(0xff); //Unused columns
 }
 
-void EPD_2IN9D_SendPartialLineAddr(uint8_t line) {
-    EPD_2IN9D_SendCommand(0x90);		//resolution setting
-    EPD_2IN9D_SendData(line*16);           //x-start
-    EPD_2IN9D_SendData((line*16)+16 - 1);       //x-end
-
-    EPD_2IN9D_SendData(0);
-    EPD_2IN9D_SendData(0);     //y-start
-    EPD_2IN9D_SendData(296 / 256);
-    EPD_2IN9D_SendData(296 % 256 - 1);  //y-end
-    EPD_2IN9D_SendData(0x01);
-}
 
 /**
  * @brief Use partial refresh to show string on one double-sized line of the
@@ -660,6 +650,11 @@ void epaper_autowrite(uint8_t *str, uint8_t str_len)
             EPD_2IN9D_Clear();
             EPD_2IN9D_SetPartReg();
         }          
+        if (line%8 == 0) {
+            EPD_2IN9D_DisplayPart((void *)gImage_2in9);
+            EPD_2IN9D_TurnOnDisplay();
+            EPD_2IN9D_DisplayPart((void *)gImage_2in9);
+        }
     }
     epaper_WriteDoubleLine(str, str_len, line%8);
     EPD_2IN9D_TurnOnDisplay();
