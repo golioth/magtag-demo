@@ -34,6 +34,8 @@
 #include <stdio.h>
 #include <zephyr.h>
 
+#define Debug(__info) printk(__info)
+
 /**
  * data
 **/

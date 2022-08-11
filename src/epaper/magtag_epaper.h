@@ -33,5 +33,13 @@ void epaper_FullClear(void);
 void epaper_init(void);
 void EPD_2IN9D_Sleep(void);
 
+uint8_t flip_invert(uint8_t column);
+void double_flip_invert(uint8_t orig_column, uint8_t return_cols[2]);
+void epaper_SendTextLine(uint8_t *str, uint8_t str_len);
+void epaper_SendDoubleTextLine(uint8_t *str, uint8_t str_len, bool full);
+void epaper_WriteLine(uint8_t *str, uint8_t str_len, uint8_t line);
+void epaper_WriteDoubleLine(uint8_t *str, uint8_t str_len, uint8_t line);
+void epaper_autowrite(uint8_t *str, uint8_t str_len);
+
 #endif
 

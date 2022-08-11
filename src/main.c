@@ -11,7 +11,6 @@
 LOG_MODULE_REGISTER(magtag_newepaper, LOG_LEVEL_DBG);
 
 /* MagTag specific hardware includes */
-#include "epaper/magtag_linewriter.h"
 #include "epaper/magtag_epaper.h"
 #include "epaper/ImageData.h"
 

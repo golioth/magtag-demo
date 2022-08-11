@@ -7,7 +7,6 @@ project(lightdb)
 
 target_sources(app PRIVATE src/main.c)
 target_sources(app PRIVATE src/epaper/magtag_epaper.c)
-target_sources(app PRIVATE src/epaper/magtag_linewriter.c)
 target_sources(app PRIVATE src/epaper/DEV_Config.c)
 target_sources(app PRIVATE src/epaper/ImageData.c)
 target_sources(app PRIVATE src/ws2812/ws2812_control.c)
