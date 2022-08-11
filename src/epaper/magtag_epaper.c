@@ -28,9 +28,9 @@
 ******************************************************************************/
 
 #include "magtag_epaper.h"
-#include "DEV_Config.h"
+#include "magtag_epaper_hal.h"
 #include "font5x8.h"
-#include "ImageData.h"
+#include "GoliothLogo.h"
 #include <logging/log.h>
 LOG_MODULE_REGISTER(golioth_epaper, LOG_LEVEL_DBG);
 
@@ -381,10 +381,10 @@ void epaper_init(void) {
     EPD_2IN9D_Clear();
 
     LOG_INF("Show Golioth logo");
-    EPD_2IN9D_Display((void *)gImage_2in9); /* cast because function is not expecting a CONST array) */
+    EPD_2IN9D_Display((void *)golioth_logo); /* cast because function is not expecting a CONST array) */
 
     EPD_2IN9D_Refresh();
-    EPD_2IN9D_Display((void *)gImage_2in9); /* cast because function is not expecting a CONST array) */
+    EPD_2IN9D_Display((void *)golioth_logo); /* cast because function is not expecting a CONST array) */
     EPD_2IN9D_SetPartReg();
 }
 
@@ -630,4 +630,5 @@ void epaper_autowrite(uint8_t *str, uint8_t str_len)
     epaper_WriteDoubleLine(str, str_len, line%8);
     ++line;
 }
+
 
