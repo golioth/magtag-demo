@@ -56,7 +56,7 @@ void double_flip_invert(uint8_t orig_column, uint8_t return_cols[2]) {
  * @param str       String to display
  * @param str_len   Length of string
  */
-void epaper_SendColumn(uint8_t *str, uint8_t str_len)
+void epaper_SendTextLine(uint8_t *str, uint8_t str_len)
 {
     uint8_t send_col;
     uint8_t letter;
@@ -103,7 +103,7 @@ void epaper_SendColumn(uint8_t *str, uint8_t str_len)
  * @param full      True if called by a full refresh, false for a partial
  * refresh
  */
-void epaper_SendDoubleColumn(uint8_t *str, uint8_t str_len, bool full)
+void epaper_SendDoubleTextLine(uint8_t *str, uint8_t str_len, bool full)
 {
     uint8_t send_col[2] = {0};
     uint8_t letter;
@@ -170,7 +170,7 @@ void epaper_WriteLine(uint8_t *str, uint8_t str_len, uint8_t line)
     EPD_2IN9D_SendCommand(0x91);
     EPD_2IN9D_SendPartialAddr(line*8, 0, 8, 296);
     EPD_2IN9D_SendCommand(0x13);
-    epaper_SendColumn(str, str_len);
+    epaper_SendTextLine(str, str_len);
     EPD_2IN9D_SendCommand(0x92);
 
     /* Refresh display, then write data again to prewind the "last-frame" */
@@ -179,7 +179,7 @@ void epaper_WriteLine(uint8_t *str, uint8_t str_len, uint8_t line)
     EPD_2IN9D_SendCommand(0x91);
     EPD_2IN9D_SendPartialAddr(line*8, 0, 8, 296);
     EPD_2IN9D_SendCommand(0x13);
-    epaper_SendColumn(str, str_len);
+    epaper_SendTextLine(str, str_len);
     EPD_2IN9D_SendCommand(0x92);
 
     /* Don't refresh, this data will be used in the next partial refresh */
@@ -200,7 +200,7 @@ void epaper_WriteDoubleLine(uint8_t *str, uint8_t str_len, uint8_t line)
     EPD_2IN9D_SendCommand(0x91);
     EPD_2IN9D_SendPartialLineAddr(line); 
     EPD_2IN9D_SendCommand(0x13);
-    epaper_SendDoubleColumn(str, str_len, false);
+    epaper_SendDoubleTextLine(str, str_len, false);
     EPD_2IN9D_SendCommand(0x92);
 
     /* Refresh display, then write data again to prewind the "last-frame" */
@@ -209,7 +209,7 @@ void epaper_WriteDoubleLine(uint8_t *str, uint8_t str_len, uint8_t line)
     EPD_2IN9D_SendCommand(0x91);
     EPD_2IN9D_SendPartialLineAddr(line);    
     EPD_2IN9D_SendCommand(0x13);
-    epaper_SendDoubleColumn(str, str_len, false);
+    epaper_SendDoubleTextLine(str, str_len, false);
     EPD_2IN9D_SendCommand(0x92);
 
     /* Don't refresh, this data will be used in the next partial refresh */
