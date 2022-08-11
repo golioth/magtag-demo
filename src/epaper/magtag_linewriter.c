@@ -29,36 +29,35 @@ uint8_t flip_invert(uint8_t column) {
 }
 
 /**
- * @brief Use partial refresh to show string on one line of the display
- * 
- * Display is considered protrait-mode 296x128. This leaves 16 lines that are
- * 8-bits tall, and 296 columns
- * 
- * @param str           string to be written to display
- * @param str_len       numer of characters in string
- * @param line          0..16
+ * @brief Flip endianness of input, double each pixel to enlarge the font, and
+ * invert the value to match the needs of the display
+ *
+ * @param orig_column   Font column input
+ * @param return_cols   Two-byte array to store the results
  */
-void epaper_WriteLine(uint8_t *str, uint8_t str_len, uint8_t line)
+void double_flip_invert(uint8_t orig_column, uint8_t return_cols[2]) {
+    // Double the pixesl, the flip endianness and invert
+    uint8_t upper_column = 0;
+    uint8_t lower_column = 0;
+    for (uint8_t i=0; i<4; i++)
+    {
+        if (orig_column & (1<<(i+4))) upper_column |= 0b11 << (i*2);
+        if (orig_column & (1<<(i))) lower_column |= 0b11 << (i*2);
+    }
+    return_cols[0] = flip_invert(upper_column);
+    return_cols[1] = flip_invert(lower_column);
+}
+
+/**
+ * @brief Write data for showing text on display
+ *
+ * This is meant to be used with partial writes.
+ *
+ * @param str       String to display
+ * @param str_len   Length of string
+ */
+void epaper_SendColumn(uint8_t *str, uint8_t str_len)
 {
-    if (line > 15) return;
-    /* Set partial Windows */
-//     EPD_2IN9D_Init();
-//     EPD_2IN9D_SetPartReg();
-    EPD_2IN9D_SendCommand(0x91);		//This command makes the display enter partial mode
-    EPD_2IN9D_SendCommand(0x90);		//resolution setting
-    EPD_2IN9D_SendData(line*8);           //x-start
-    EPD_2IN9D_SendData((line*8)+8 - 1);       //x-end
-
-    EPD_2IN9D_SendData(0);
-    EPD_2IN9D_SendData(0);     //y-start
-    EPD_2IN9D_SendData(296 / 256);
-    EPD_2IN9D_SendData(296 % 256 - 1);  //y-end
-    EPD_2IN9D_SendData(0x28);
-    
-    /* send data */
-    EPD_2IN9D_SendCommand(0x13);
-
-    //FIXME: column centering a looping only works for full-width
     uint8_t send_col;
     uint8_t letter;
     uint8_t column = 0;
@@ -92,30 +91,6 @@ void epaper_WriteLine(uint8_t *str, uint8_t str_len, uint8_t line)
         }
     }
     EPD_2IN9D_SendData(0xff); //Unused column
-
-    /* Set partial refresh */    
-    EPD_2IN9D_Refresh();
-    EPD_2IN9D_Sleep();
-}
-
-/**
- * @brief Flip endianness of input, double each pixel to enlarge the font, and
- * invert the value to match the needs of the display
- *
- * @param orig_column   Font column input
- * @param return_cols   Two-byte array to store the results
- */
-void double_flip_invert(uint8_t orig_column, uint8_t return_cols[2]) {
-    // Double the pixesl, the flip endianness and invert
-    uint8_t upper_column = 0;
-    uint8_t lower_column = 0;
-    for (uint8_t i=0; i<4; i++)
-    {
-        if (orig_column & (1<<(i+4))) upper_column |= 0b11 << (i*2);
-        if (orig_column & (1<<(i))) lower_column |= 0b11 << (i*2);
-    }
-    return_cols[0] = flip_invert(upper_column);
-    return_cols[1] = flip_invert(lower_column);
 }
 
 /**
@@ -178,6 +153,37 @@ void epaper_SendDoubleColumn(uint8_t *str, uint8_t str_len, bool full)
     for (uint8_t i=0; i<vamp_count; i++) EPD_2IN9D_SendData(0xff); //Unused columns
 }
 
+/**
+ * @brief Use partial refresh to show string on one line of the display
+ *
+ * Display is considered protrait-mode 296x128. This leaves 16 lines that are
+ * 8-bits tall, and 296 columns
+ *
+ * @param str           string to be written to display
+ * @param str_len       numer of characters in string
+ * @param line          0..16
+ */
+void epaper_WriteLine(uint8_t *str, uint8_t str_len, uint8_t line)
+{
+    line %= 16;  /* Bounding */
+
+    EPD_2IN9D_SendCommand(0x91);
+    EPD_2IN9D_SendPartialAddr(line*8, 0, 8, 296);
+    EPD_2IN9D_SendCommand(0x13);
+    epaper_SendColumn(str, str_len);
+    EPD_2IN9D_SendCommand(0x92);
+
+    /* Refresh display, then write data again to prewind the "last-frame" */
+    EPD_2IN9D_Refresh();
+
+    EPD_2IN9D_SendCommand(0x91);
+    EPD_2IN9D_SendPartialAddr(line*8, 0, 8, 296);
+    EPD_2IN9D_SendCommand(0x13);
+    epaper_SendColumn(str, str_len);
+    EPD_2IN9D_SendCommand(0x92);
+
+    /* Don't refresh, this data will be used in the next partial refresh */
+}
 
 /**
  * @brief Use partial refresh to show string on one double-sized line of the
@@ -185,50 +191,28 @@ void epaper_SendDoubleColumn(uint8_t *str, uint8_t str_len, bool full)
  *
  * @param str           string to be written to display
  * @param str_len       numer of characters in string
- * @param line          0..16 
+ * @param line          0..8
  */
 void epaper_WriteDoubleLine(uint8_t *str, uint8_t str_len, uint8_t line)
 {
-    if (line > 7) return;
-    EPD_2IN9D_SendCommand(0x91);		//This command makes the display enter partial mode
-    EPD_2IN9D_SendPartialLineAddr(line);    
-    /* send data */
-    EPD_2IN9D_SendCommand(0x13);
+    line %= 8;  /* Bounding */
 
-    //FIXME: column centering a looping only works for full-width
+    EPD_2IN9D_SendCommand(0x91);
+    EPD_2IN9D_SendPartialLineAddr(line); 
+    EPD_2IN9D_SendCommand(0x13);
     epaper_SendDoubleColumn(str, str_len, false);
-
     EPD_2IN9D_SendCommand(0x92);
-}
 
-/**
- * @brief Full display refresh of one double-height line of text
- * 
- * EPD_2IN9D_Init(); must be called prior to this command.
- * 
- * @param str       String to display
- * @param str_len   Length of string
- */
-void EPD_2IN9D_FullRefreshDoubleLine(uint8_t *str, uint8_t str_len)
-{
-    uint16_t Width, Height;
-    Width = (EPD_2IN9D_WIDTH % 8 == 0)? (EPD_2IN9D_WIDTH / 8 ): (EPD_2IN9D_WIDTH / 8 + 1);
-    Height = EPD_2IN9D_HEIGHT;
-
-    EPD_2IN9D_SendCommand(0x10);
-    for (uint16_t j = 0; j < Height; j++) {
-        for (uint16_t i = 0; i < Width; i++) {
-            EPD_2IN9D_SendData(0x00);
-        }
-    }
-    // Dev_Delay_ms(10);
-
-    EPD_2IN9D_SendCommand(0x13);
-    epaper_SendDoubleColumn(str, str_len, true);
-    // Dev_Delay_ms(10);
-
+    /* Refresh display, then write data again to prewind the "last-frame" */
     EPD_2IN9D_Refresh();
-    EPD_2IN9D_Sleep();
+
+    EPD_2IN9D_SendCommand(0x91);
+    EPD_2IN9D_SendPartialLineAddr(line);    
+    EPD_2IN9D_SendCommand(0x13);
+    epaper_SendDoubleColumn(str, str_len, false);
+    EPD_2IN9D_SendCommand(0x92);
+
+    /* Don't refresh, this data will be used in the next partial refresh */
 }
 
 /**
@@ -246,10 +230,8 @@ void epaper_autowrite(uint8_t *str, uint8_t str_len)
             EPD_2IN9D_Init();
             EPD_2IN9D_Clear();
             EPD_2IN9D_SetPartReg();
-        }          
+        }
     }
-    epaper_WriteDoubleLine(str, str_len, line%8);
-    EPD_2IN9D_Refresh();
     epaper_WriteDoubleLine(str, str_len, line%8);
     ++line;
 }

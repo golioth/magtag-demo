@@ -384,7 +384,7 @@ void epaper_init(void) {
 
     LOG_INF("Show Golioth logo");
     EPD_2IN9D_Display((void *)gImage_2in9); /* cast because function is not expecting a CONST array) */
-        
+
     EPD_2IN9D_Refresh();
     EPD_2IN9D_Display((void *)gImage_2in9); /* cast because function is not expecting a CONST array) */
     EPD_2IN9D_SetPartReg();
