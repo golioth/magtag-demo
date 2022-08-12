@@ -21,12 +21,6 @@ void main(void)
 	epaper_init();
 	/* turn LEDs green to indicate connection */
 	epaper_autowrite("Connected to Golioth!", 21);
-	epaper_WriteLine("Line 2",6,2);
-	epaper_WriteLine("Line 3",6,3);
-	epaper_WriteLine("Line 4",6,4);
-	epaper_WriteLine("Line 5",6,5);
-	epaper_WriteLine("Line 6",6,6);
-	epaper_WriteLine("Line 16",7,16);
 
 	int counter = 0;
 	int err;

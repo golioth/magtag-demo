@@ -39,6 +39,7 @@ void epaper_SendTextLine(uint8_t *str, uint8_t str_len);
 void epaper_SendDoubleTextLine(uint8_t *str, uint8_t str_len, bool full);
 void epaper_WriteLine(uint8_t *str, uint8_t str_len, uint8_t line);
 void epaper_WriteDoubleLine(uint8_t *str, uint8_t str_len, uint8_t line);
+void epaper_WriteLargeLine(uint8_t *str, uint8_t str_len, uint8_t line);
 void epaper_autowrite(uint8_t *str, uint8_t str_len);
 
 #endif

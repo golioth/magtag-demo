@@ -1,9 +1,3 @@
-/*
- * Copyright (c) 2022 Golioth, Inc.
- *
- * SPDX-License-Identifier: Apache-2.0
- */
-
 /* originally based on Wavesahre E-Paper Library: */
 
 /*
@@ -27,9 +21,16 @@
 #
 ******************************************************************************/
 
+/*
+ * Copyright (c) 2022 Golioth, Inc.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #include "magtag_epaper.h"
 #include "magtag_epaper_hal.h"
 #include "font5x8.h"
+#include "ubuntu_monospaced_bold_10x16.h"
 #include "GoliothLogo.h"
 #include <logging/log.h>
 LOG_MODULE_REGISTER(golioth_epaper, LOG_LEVEL_DBG);
@@ -548,6 +549,52 @@ void epaper_SendDoubleTextLine(uint8_t *str, uint8_t str_len, bool full)
     for (uint8_t i=0; i<vamp_count; i++) EPD_2IN9D_SendData(0xff); //Unused columns
 }
 
+void epaper_SendLargeTextLine(uint8_t *str, uint8_t str_len)
+{
+#define CHARS_PER_LINE  28  // 296/20 = 28 (remainder of 6)
+#define REMAINDER_PAD   6   // Used to pad ends of lines
+#define ASCII_OFFSET    32  // Font start with space (char 32)
+#define FONT_CHAR_S     20  // 2 bytes per column, 10 columns
+
+    uint8_t letter;
+    uint8_t letter_column;
+    for (uint8_t i=0; i<6; i++) EPD_2IN9D_SendData(0xff); //Unused columns
+    for (uint8_t j=0; j<=CHARS_PER_LINE; j++) {
+        if (j <= CHARS_PER_LINE-str_len) {
+            /* String too short, send a space */
+            letter = ' '-ASCII_OFFSET;
+        }
+        else {
+            letter = str[CHARS_PER_LINE-j]-ASCII_OFFSET;
+        }
+        for (uint16_t i = 0; i < FONT_CHAR_S; i++) {
+            letter_column = u_mono_bold_10x16[(letter*FONT_CHAR_S)+i];
+            EPD_2IN9D_SendData(~letter_column);
+        }
+    }
+    for (uint8_t i=0; i<6; i++) EPD_2IN9D_SendData(0xff); //Unused columns
+}
+
+void epaper_WriteLargeLine(uint8_t *str, uint8_t str_len, uint8_t line)
+{
+    line %= 8;  /* Bounding */
+
+    EPD_2IN9D_SendCommand(0x91);
+    EPD_2IN9D_SendPartialLineAddr(line);
+    EPD_2IN9D_SendCommand(0x13);
+    epaper_SendLargeTextLine(str, str_len);
+    EPD_2IN9D_SendCommand(0x92);
+
+    /* Refresh display, then write data again to prewind the "last-frame" */
+    EPD_2IN9D_Refresh();
+
+    EPD_2IN9D_SendCommand(0x91);
+    EPD_2IN9D_SendPartialLineAddr(line);
+    EPD_2IN9D_SendCommand(0x13);
+    epaper_SendLargeTextLine(str, str_len);
+    EPD_2IN9D_SendCommand(0x92);
+}
+
 /**
  * @brief Use partial refresh to show string on one line of the display
  *
@@ -627,7 +674,7 @@ void epaper_autowrite(uint8_t *str, uint8_t str_len)
             EPD_2IN9D_SetPartReg();
         }
     }
-    epaper_WriteDoubleLine(str, str_len, line%8);
+    epaper_WriteLargeLine(str, str_len, line);
     ++line;
 }
 
