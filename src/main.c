@@ -124,6 +124,11 @@ void main(void)
 {
 	LOG_DBG("Start MagTag Hello demo");
 
+	/* Initialize MagTag hardware */
+	ws2812_init();
+	/* show two blue pixels to show until we connect to Golioth */
+	leds_immediate(BLACK, BLUE, BLUE, BLACK);
+	epaper_init();
 	if (IS_ENABLED(CONFIG_GOLIOTH_SAMPLES_COMMON)) {
 		net_connect();
 	}
@@ -132,19 +137,9 @@ void main(void)
 	client->on_message = golioth_on_message;
 	golioth_system_client_start();
 
+	/* wait until we've connected to golioth */
 	k_sem_take(&connected, K_FOREVER);
 
-	/* Initialize MagTag hardware */
-	ws2812_init();
-	/* show two blue pixels to show until we connect to Golioth */
-	leds_immediate(BLACK, BLUE, BLUE, BLACK);
-	epaper_init();
-
-	/* wait until we've connected to golioth */
-	while (golioth_ping(client) != 0)
-	{
-		k_msleep(1000);
-	}
 	/* turn LEDs green to indicate connection */
 	leds_immediate(GREEN, GREEN, GREEN, GREEN);
 	epaper_autowrite("Connected to Golioth!", 21);
