@@ -1,16 +1,11 @@
 #include "ws2812_control.h"
-#include <logging/log.h>
+#include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(golioth_ws2812, LOG_LEVEL_DBG);
 
 /* ws2812 */
 
 /* mosfet control pin for ws2812 power rail */
 #define NEOPOWER_NODE 	DT_ALIAS(neopower)
-#if DT_NODE_HAS_STATUS(NEOPOWER_NODE, okay)
-#define NEOPOWER		DT_GPIO_LABEL(NEOPOWER_NODE, gpios)
-#define NEOPOWER_PIN	DT_GPIO_PIN(NEOPOWER_NODE, gpios)
-#define NEOPOWER_FLAGS	DT_GPIO_FLAGS(NEOPOWER_NODE, gpios)
-#endif
 
 struct led_color_state led_states[STRIP_NUM_PIXELS];
 struct led_rgb pixels[STRIP_NUM_PIXELS];
@@ -59,15 +54,12 @@ void ws2812_init(void) {
     /* ws2812 */
 
 	/* Turn on power to the ws2812 neopixels */
-	#if DT_NODE_HAS_STATUS(NEOPOWER_NODE, okay)
-	const struct device *neopower_dev;
-	neopower_dev = device_get_binding(NEOPOWER);
-	int ret = gpio_pin_configure(neopower_dev, NEOPOWER_PIN, GPIO_OUTPUT_ACTIVE | NEOPOWER_FLAGS);
+	const struct gpio_dt_spec neopower_dev = GPIO_DT_SPEC_GET(NEOPOWER_NODE, gpios);
+	int ret = gpio_pin_configure_dt(&neopower_dev, GPIO_OUTPUT_ACTIVE);
 	if (ret < 0) {
 		LOG_ERR("Failed to configure NEOPOWER pin: %d", ret);
 	}
-	gpio_pin_set(neopower_dev, NEOPOWER_PIN, 0);
-	#endif
+	gpio_pin_set_dt(&neopower_dev, 0);
 
 	#if defined(CONFIG_SOC_ESP32S2)
 	/* This is a hack to fix incorrect SPI polarity on ESP32s2-based boards */
