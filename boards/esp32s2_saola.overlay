@@ -1,19 +1,17 @@
 &i2c1 {
-    pinctrl-0 = <&i2c1_sda_gpio33 &i2c1_scl_gpio34>;
+	pinctrl-0 = <&i2c1_default>;
 	status = "okay";
 
 	lis3dh@19 {
 			compatible = "st,lis2dh";
 			reg = <0x19>;
-			label = "LIS3DH";
 	};
 };
 
 &spi2 {
-    pinctrl-0 = <&spim2_mosi_gpio1 &spim2_sclk_gpio0>;
+	pinctrl-0 = <&spim2_default>;
 	led_strip: ws2812@0 {
 		compatible = "worldsemi,ws2812-spi";
-		label = "WS2812";
 
 		/* SPI */
 		reg = <0>; /* ignored, but necessary for SPI bindings */
@@ -28,23 +26,17 @@
 };
 
 &pinctrl {
-    i2c1_sda_gpio33: i2c1_sda_gpio33 {
-        pinmux = <I2C1_SDA_GPIO33>;
-        bias-pull-up;
-        drive-open-drain;
-        output-high;
-    };
-    i2c1_scl_gpio34: i2c1_scl_gpio34 {
-        pinmux = <I2C1_SCL_GPIO34>;
-        bias-pull-up;
-        drive-open-drain;
-        output-high;
-    };
-    spim2_mosi_gpio1: spim2_mosi_gpio1 {
-        pinmux = <SPIM2_MOSI_GPIO1>;
-    };
-    spim2_sclk_gpio0: spim2_sclk_gpio0 {
-		pinmux = <SPIM2_SCLK_GPIO0>;
+	i2c1_default: i2c1_default {
+		group1 {
+			pinmux = <I2C1_SDA_GPIO33>,
+					 <I2C1_SCL_GPIO34>;
+		};
+	};
+	spim2_default: spim2_default {
+		group1 {
+			pinmux = <SPIM2_MOSI_GPIO1>;
+		};
+		/delete-node/ group2;
 	};
 };
 
@@ -70,27 +62,21 @@
         compatible = "gpio-leds";
         neopower: neo_power {
             gpios = <&gpio0 21 GPIO_ACTIVE_HIGH>;
-            label = "Neopower";
 		};
         mosi: mosi_p {
             gpios = <&gpio1 3 GPIO_ACTIVE_HIGH>;
-            label = "mosi";
         };
 		sclk: sclk_p {
             gpios = <&gpio1 4 GPIO_ACTIVE_HIGH>;
-            label = "sclk";
         };
 		csel: csel_p {
             gpios = <&gpio0 8 GPIO_ACTIVE_HIGH>;
-            label = "csel";
         };
 		dc: dc_pin {
             gpios = <&gpio0 7 GPIO_ACTIVE_HIGH>;
-            label = "data_command";
         };
 		rst: reset {
             gpios = <&gpio0 6 GPIO_ACTIVE_HIGH>;
-            label = "reset";
         };
         active: active_pin {
             gpios = <&gpio0 16 GPIO_ACTIVE_HIGH>;
@@ -106,23 +92,18 @@
         compatible = "gpio-keys";
 		busy: busy_pin {
             gpios = <&gpio0 5 GPIO_ACTIVE_HIGH>;
-            label = "busy";
         };
         button0: button_0 {
             gpios = <&gpio0 11 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
-            label = "Button 0";
         };
         button1: button_1 {
             gpios = <&gpio0 12 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
-            label = "Button 1";
         };
 		button2: button_2 {
             gpios = <&gpio0 14 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
-            label = "Button 2";
         };
         button3: button_3 {
             gpios = <&gpio0 15 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
-            label = "Button 3";
         };
     };
 
