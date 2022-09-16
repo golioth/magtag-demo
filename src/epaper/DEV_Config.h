@@ -32,7 +32,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
-#include <zephyr.h>
+#include <zephyr/kernel.h>
 
 /**
  * data

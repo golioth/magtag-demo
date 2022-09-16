@@ -6,7 +6,7 @@
 
 /* Logging */
 #include <stdlib.h>
-#include <logging/log.h>
+#include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(golioth_magtag, LOG_LEVEL_DBG);
 
 /* MagTag specific hardware includes */
@@ -15,11 +15,12 @@ LOG_MODULE_REGISTER(golioth_magtag, LOG_LEVEL_DBG);
 #include "ws2812/ws2812_control.h"
 
 /* Golioth platform includes */
-#include <net/coap.h>
 #include <net/golioth/system_client.h>
-#include <samples/common/wifi.h>
+#include <samples/common/net_connect.h>
+#include <zephyr/net/coap.h>
 
 static struct golioth_client *client = GOLIOTH_SYSTEM_CLIENT_GET();
+static K_SEM_DEFINE(connected, 0, 1);
 static struct coap_reply coap_replies[1];
 uint8_t led_bitmask;
 uint8_t update_leds_flag;
@@ -80,6 +81,8 @@ static void golioth_on_connect(struct golioth_client *client)
 	int err;
 	update_leds_flag = 0;
 
+	k_sem_give(&connected);
+
 	coap_replies_clear(coap_replies, ARRAY_SIZE(coap_replies));
 
 	observe_reply = coap_reply_next_unused(coap_replies,
@@ -121,16 +124,15 @@ void main(void)
 {
 	LOG_DBG("Start MagTag Hello demo");
 
-	/* WiFi */
-	if (IS_ENABLED(CONFIG_GOLIOTH_SAMPLE_WIFI)) {
-		LOG_INF("Connecting to WiFi");
-		wifi_connect();
+	if (IS_ENABLED(CONFIG_GOLIOTH_SAMPLES_COMMON)) {
+		net_connect();
 	}
 
 	client->on_connect = golioth_on_connect;
 	client->on_message = golioth_on_message;
 	golioth_system_client_start();
 
+	k_sem_take(&connected, K_FOREVER);
 
 	/* Initialize MagTag hardware */
 	ws2812_init();

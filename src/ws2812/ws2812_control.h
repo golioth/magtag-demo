@@ -1,11 +1,11 @@
 #ifndef __WS2812_CONTROL_H_
 #define __WS2812_CONTROL_H_
 
-#include <zephyr.h>
-#include <drivers/led_strip.h>
-#include <device.h>
-#include <drivers/spi.h>
-#include <sys/util.h>
+#include <zephyr/kernel.h>
+#include <zephyr/drivers/led_strip.h>
+#include <zephyr/device.h>
+#include <zephyr/drivers/spi.h>
+#include <zephyr/sys/util.h>
 #include <string.h>
 
 #define STRIP_NODE		    DT_ALIAS(led_strip)
