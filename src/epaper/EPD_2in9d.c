@@ -55,7 +55,7 @@
 #include "Debug.h"
 #include "font5x8.h"
 #include "ImageData.h"
-#include <logging/log.h>
+#include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(golioth_epaper, LOG_LEVEL_DBG);
 
 /**

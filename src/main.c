@@ -6,13 +6,13 @@
 
 /* Logging */
 #include <stdlib.h>
-#include <logging/log.h>
+#include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(golioth_magtag, LOG_LEVEL_DBG);
 
-/* Golioth */
-#include <net/coap.h>
+/* Golioth platform includes */
 #include <net/golioth/system_client.h>
-#include <samples/common/wifi.h>
+#include <samples/common/net_connect.h>
+#include <zephyr/net/coap.h>
 
 /* MagTag specific hardware includes */
 #include "epaper/EPD_2in9d.h"
@@ -22,8 +22,15 @@ LOG_MODULE_REGISTER(golioth_magtag, LOG_LEVEL_DBG);
 
 volatile uint64_t debounce = 0;
 
+
 /* Golioth */
 static struct golioth_client *client = GOLIOTH_SYSTEM_CLIENT_GET();
+static K_SEM_DEFINE(connected, 0, 1);
+
+static void golioth_on_connect(struct golioth_client *client)
+{
+	k_sem_give(&connected);
+}
 
 static int record_accelerometer(const struct device *sensor)
 {
@@ -161,18 +168,22 @@ void main(void)
 	#define CONFIG_MAGTAG_NAME "MagTag"
 	#endif
 
-	/* Accelerometer */
-	accelerometer_init();
-
-	/* WiFi */
-	if (IS_ENABLED(CONFIG_GOLIOTH_SAMPLE_WIFI)) {
-		LOG_INF("Connecting to WiFi");
-		wifi_connect();
-	}
-
 	/* Init leds and set two blue pixels to show until we connect to Golioth */
 	ws2812_init();
 	leds_immediate(BLACK, BLUE, BLUE, BLACK);
+
+	if (IS_ENABLED(CONFIG_GOLIOTH_SAMPLES_COMMON)) {
+		net_connect();
+	}
+
+	client->on_connect = golioth_on_connect;
+	client->on_message = golioth_on_message;
+	golioth_system_client_start();
+
+	k_sem_take(&connected, K_FOREVER);
+
+	/* Accelerometer */
+	accelerometer_init();
 
 	/* buttons */
 	buttons_init(button_pressed);
