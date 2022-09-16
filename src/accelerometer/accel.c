@@ -1,5 +1,5 @@
 #include "accel.h"
-#include <logging/log.h>
+#include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(golioth_accel, LOG_LEVEL_DBG);
 
 struct device *sensor;

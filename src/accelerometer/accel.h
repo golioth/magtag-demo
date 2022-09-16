@@ -1,7 +1,7 @@
 #ifndef __ACCEL_H_
 #define __ACCEL_H_
 
-#include <drivers/sensor.h>
+#include <zephyr/drivers/sensor.h>
 
 extern struct device *sensor;
 
