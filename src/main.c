@@ -17,15 +17,53 @@ LOG_MODULE_REGISTER(golioth_magtag, LOG_LEVEL_DBG);
 
 /* Golioth platform includes */
 #include <net/golioth/system_client.h>
+#include <net/golioth/settings.h>
 #include <samples/common/net_connect.h>
 #include <zephyr/net/coap.h>
 
 static struct golioth_client *client = GOLIOTH_SYSTEM_CLIENT_GET();
 static K_SEM_DEFINE(connected, 0, 1);
 
+static int32_t _loop_delay_s = 5;
+static k_tid_t _system_thread = 0;
+
+enum golioth_settings_status on_setting(
+		const char *key,
+		const struct golioth_settings_value *value)
+{
+	LOG_DBG("Received setting: key = %s, type = %d", key, value->type);
+	if (strcmp(key, "LOOP_DELAY_S") == 0) {
+		/* This setting is expected to be numeric, return an error if it's not */
+		if (value->type != GOLIOTH_SETTINGS_VALUE_TYPE_INT64) {
+			return GOLIOTH_SETTINGS_VALUE_FORMAT_NOT_VALID;
+		}
+
+		/* This setting must be in range [1, 100], return an error if it's not */
+		if (value->i64 < 1 || value->i64 > 100) {
+			return GOLIOTH_SETTINGS_VALUE_OUTSIDE_RANGE;
+		}
+
+		/* Setting has passed all checks, so apply it to the loop delay */
+		_loop_delay_s = (int32_t)value->i64;
+		LOG_INF("Set loop delay to %d seconds", _loop_delay_s);
+		k_wakeup(_system_thread);
+
+		return GOLIOTH_SETTINGS_SUCCESS;
+	}
+
+	/* If the setting is not recognized, we should return an error */
+	return GOLIOTH_SETTINGS_KEY_NOT_RECOGNIZED;
+}
+
 static void golioth_on_connect(struct golioth_client *client)
 {
 	k_sem_give(&connected);
+
+	int err = golioth_settings_register_callback(client, on_setting);
+
+	if (err) {
+		LOG_ERR("Failed to register settings callback: %d", err);
+	}
 }
 
 static int record_accelerometer(const struct device *sensor)
@@ -78,6 +116,9 @@ void main(void)
 {
 	LOG_DBG("Start MagTag LightDB Stream demo");
 
+	/* Get system thread id so loop delay change event can wake main */
+	_system_thread = k_current_get();
+
 	/* Initialize MagTag hardware */
 	ws2812_init();
 	/* show two blue pixels to show until we connect to Golioth */
@@ -115,6 +156,6 @@ void main(void)
 			epaper_autowrite("Sent accel data", 16);
 		}
 
-		k_sleep(K_SECONDS(5));
+		k_sleep(K_SECONDS(_loop_delay_s));
 	}
 }
