@@ -27,6 +27,8 @@ static K_SEM_DEFINE(connected, 0, 1);
 static int32_t _loop_delay_s = 5;
 static k_tid_t _system_thread = 0;
 
+static struct sensor_value accel[3];
+
 enum golioth_settings_status on_setting(
 		const char *key,
 		const struct golioth_settings_value *value)
@@ -68,8 +70,6 @@ static void golioth_on_connect(struct golioth_client *client)
 
 static int record_accelerometer(const struct device *sensor)
 {
-	/* Struct to store new sensor reading */
-	struct sensor_value accel[3];
 	/* Call sensor library to take sensor reading */
 	fetch_and_display(sensor, accel);
 
@@ -153,7 +153,14 @@ void main(void)
 		}
 		else
 		{
-			epaper_autowrite("Sent accel data", 16);
+			char str[160];
+			snprintk(str, sizeof(str) -1,
+						"%.4f %.4f %.4f",
+						sensor_value_to_double(&accel[0]),
+						sensor_value_to_double(&accel[1]),
+						sensor_value_to_double(&accel[2])
+						);
+			epaper_autowrite(str, strlen(str));
 		}
 
 		k_sleep(K_SECONDS(_loop_delay_s));
