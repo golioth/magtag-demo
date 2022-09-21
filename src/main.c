@@ -15,7 +15,7 @@ LOG_MODULE_REGISTER(golioth_magtag, LOG_LEVEL_DBG);
 #include <zephyr/net/coap.h>
 
 /* MagTag specific hardware includes */
-#include "epaper/EPD_2in9d.h"
+#include "epaper/magtag_epaper.h"
 #include "ws2812/ws2812_control.h"
 #include "accelerometer/accel.h"
 #include "buttons/buttons.h"
@@ -204,7 +204,6 @@ void main(void)
 	golioth_system_client_start();
 
 	/* ePaper */
-	epaper_init();
 	epaper_WriteDoubleLine(CONFIG_MAGTAG_NAME, strlen(CONFIG_MAGTAG_NAME), 7);
 
 	/* wait until we've connected to golioth */
@@ -215,6 +214,8 @@ void main(void)
 	/* write successful connection message to screen */
 	LOG_INF("Connected to Golioth!: %s", CONFIG_MAGTAG_NAME);
 	epaper_autowrite("Connected to Golioth!", 21);
+	EPD_2IN9D_Sleep();
+	
 	led_states[0].color = RED; led_states[0].state = 1;
 	led_states[1].color = GREEN; led_states[1].state = 1;
 	led_states[2].color = BLUE; led_states[2].state = 1;

@@ -27,12 +27,12 @@
 # THE SOFTWARE.
 #
 ******************************************************************************/
-#include "DEV_Config.h"
+#include "magtag_epaper_hal.h"
 #include <zephyr/device.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(epaper_driver_dev, LOG_LEVEL_DBG);
-#include "Debug.h"
+
 /*
  * Get busy pin configuration from the devicetree
  */
