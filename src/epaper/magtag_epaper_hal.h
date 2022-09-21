@@ -27,12 +27,19 @@
 # THE SOFTWARE.
 #
 ******************************************************************************/
-#ifndef _DEV_CONFIG_H_
-#define _DEV_CONFIG_H_
+#ifndef _EPAPER_HAL_CONFIG_H_
+#define _EPAPER_HAL_CONFIG_H_
 
 #include <stdint.h>
 #include <stdio.h>
 #include <zephyr/kernel.h>
+
+#define USE_DEBUG 0
+#if USE_DEBUG
+   #define Debug(__info) printk(__info)
+#else
+   #define Debug(__info)
+#endif
 
 /**
  * data

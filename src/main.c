@@ -10,8 +10,7 @@
 LOG_MODULE_REGISTER(golioth_magtag, LOG_LEVEL_DBG);
 
 /* MagTag specific hardware includes */
-#include "epaper/EPD_2in9d.h"
-#include "epaper/ImageData.h"
+#include "epaper/magtag_epaper.h"
 #include "ws2812/ws2812_control.h"
 #include "accelerometer/accel.h"
 
