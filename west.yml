@@ -1,0 +1,22 @@
+manifest:
+  projects:
+    - name: golioth
+      path: modules/lib/golioth
+      revision: 7148f978aee29fbaa9203c7a5b69a9a6a10954d0
+      url: https://github.com/golioth/golioth-zephyr-sdk
+      west-commands: scripts/west-commands.yml
+      import:
+        file: west-zephyr.yml
+        path-prefix: deps
+        name-allowlist:
+          - zephyr
+          - cmsis
+          - hal_espressif
+          - mbedtls
+          - mcuboot
+          - net-tools
+          - qcbor
+          - segger
+          - tinycrypt
+  self:
+    path: app
