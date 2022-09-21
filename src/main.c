@@ -16,7 +16,10 @@ LOG_MODULE_REGISTER(golioth_magtag, LOG_LEVEL_DBG);
 
 /* Golioth platform includes */
 #include <net/golioth/system_client.h>
+#include <net/golioth/rpc.h>
 #include <samples/common/net_connect.h>
+#include <qcbor/qcbor.h>
+#include <qcbor/qcbor_spiffy_decode.h>
 #include <zephyr/net/coap.h>
 
 static struct golioth_client *client = GOLIOTH_SYSTEM_CLIENT_GET();
@@ -24,6 +27,24 @@ static K_SEM_DEFINE(connected, 0, 1);
 static struct coap_reply coap_replies[1];
 uint8_t led_bitmask;
 uint8_t update_leds_flag;
+
+#define LINE_ARRAY_SIZE		16
+#define LINE_STRING_LEN		28	/* must be a multiple of 4!! */
+K_MSGQ_DEFINE(line_msgq, LINE_STRING_LEN, LINE_ARRAY_SIZE, 4);
+
+void write_screen_from_buffer_work_handler(struct k_work *work) {
+	char str[LINE_STRING_LEN];
+	while(k_msgq_num_used_get(&line_msgq)) {
+		int err = k_msgq_get(&line_msgq, &str, K_NO_WAIT);
+		if (err) {
+			LOG_ERR("Error reading from message queue: %d", err);
+		}
+		else {
+			epaper_autowrite(str, strlen(str));
+		}
+	}
+}
+K_WORK_DEFINE(write_screen_from_buffer_work, write_screen_from_buffer_work_handler);
 
 /*
  * This function is registed to be called when the data
@@ -75,6 +96,35 @@ static int on_update(const struct coap_packet *response,
  * In the `main` function, this function is registed to be
  * called when the device connects to the Golioth server.
  */
+static enum golioth_rpc_status on_epaper(QCBORDecodeContext *request_params_array,
+					   QCBOREncodeContext *response_detail_map,
+					   void *callback_arg)
+{
+	UsefulBufC rpc_string;
+	double value;
+	QCBORError qerr;
+
+	QCBORDecode_GetTextString(request_params_array, &rpc_string);
+	qerr = QCBORDecode_GetError(request_params_array);
+	if (qerr != QCBOR_SUCCESS) {
+		LOG_ERR("Failed to decode array items: %d (%s)", qerr, qcbor_err_to_str(qerr));
+		return GOLIOTH_RPC_INVALID_ARGUMENT;
+	}
+
+	/* Write message to ePaper display about new led_bitmask */
+	uint8_t sbuf[LINE_STRING_LEN];
+	uint8_t cbor_len = (uint8_t)rpc_string.len+1;	/* Add room for a null terminator */
+	uint8_t len = LINE_STRING_LEN >= cbor_len ? cbor_len : LINE_STRING_LEN;
+	snprintk(sbuf, len, "%s", (char *)rpc_string.ptr);
+	if (k_msgq_put(&line_msgq, sbuf, K_NO_WAIT) != 0) {
+		LOG_ERR("Message buffer is full, skipping epaper write");
+	}
+	else {
+		k_work_submit(&write_screen_from_buffer_work);
+	}
+	return GOLIOTH_RPC_OK;
+}
+
 static void golioth_on_connect(struct golioth_client *client)
 {
 	struct coap_reply *observe_reply;
@@ -82,6 +132,11 @@ static void golioth_on_connect(struct golioth_client *client)
 	update_leds_flag = 0;
 
 	k_sem_give(&connected);
+
+	err = golioth_rpc_register(client, "epaper", on_epaper, NULL);
+	if (err) {
+		LOG_ERR("Failed to register RPC: %d", err);
+	}
 
 	coap_replies_clear(coap_replies, ARRAY_SIZE(coap_replies));
 
@@ -160,9 +215,14 @@ void main(void)
 			update_leds_flag = 0;
 
 			/* Write message to ePaper display about new led_bitmask */
-			uint8_t sbuf[24];
-			snprintk(sbuf, 24, "new led_bitmask: %d", led_bitmask);
-			epaper_autowrite(sbuf, strlen(sbuf));
+			uint8_t sbuf[LINE_STRING_LEN];
+			snprintk(sbuf, LINE_STRING_LEN, "new led_bitmask: %d", led_bitmask);
+			if (k_msgq_put(&line_msgq, sbuf, K_NO_WAIT) != 0) {
+				LOG_ERR("Message buffer is full, skipping epaper write");
+			}
+			else {
+				k_work_submit(&write_screen_from_buffer_work);
+			}
 		}
 		k_sleep(K_MSEC(200));
 	}
