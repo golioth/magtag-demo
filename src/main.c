@@ -20,8 +20,15 @@ LOG_MODULE_REGISTER(golioth_magtag, LOG_LEVEL_DBG);
 #include "accelerometer/accel.h"
 #include "buttons/buttons.h"
 
+#define DEBOUNCE_MS	200
 volatile uint64_t debounce = 0;
 
+#define BUTTON_ACTION_ARRAY_SIZE	16
+#define BUTTON_ACTION_LEN		1
+K_MSGQ_DEFINE(button_action_msgq,
+		BUTTON_ACTION_LEN,
+		BUTTON_ACTION_ARRAY_SIZE,
+		1);
 
 /* Golioth */
 static struct golioth_client *client = GOLIOTH_SYSTEM_CLIENT_GET();
@@ -76,6 +83,39 @@ void end_note_timer_handler(struct k_timer *dummy)
 K_TIMER_DEFINE(end_note_timer, end_note_timer_handler, NULL);
 uint16_t notes[4] = {764,580,470,400};
 
+void button_action_work_handler(struct k_work *work) {
+	while (k_msgq_num_used_get(&button_action_msgq)) {
+		uint8_t i;
+		k_msgq_get(&button_action_msgq, &i, K_NO_WAIT);
+		int8_t toggle_val = led_states[i].state > 0 ? 0 : 1;
+		led_states[i].state = toggle_val;
+		/* update local LED output immediately */
+		ws2812_blit(strip, led_states, STRIP_NUM_PIXELS);
+
+		gpio_pin_set_dt(&act, 1);
+		k_timer_start(&make_sound_timer, K_USEC(notes[i]), K_USEC(notes[i]));
+		k_timer_start(&end_note_timer, K_MSEC(200), K_NO_WAIT);
+
+		/* Build the endpoint with the correct LED number */
+		uint8_t endpoint[32];
+		snprintk(endpoint, sizeof(endpoint)-1, ".d/Button_%c", 'A'+i);
+		/* convert the toggle_val digit into a string */
+		char false_buf[6] = "false";
+		char true_buf[5] = "true";
+		char *state_p = toggle_val==0 ? false_buf : true_buf;
+
+		/* Update the LightDB state endpoint on the Golioth Cloud */
+		int err = golioth_lightdb_set(client,
+			  endpoint,
+			  COAP_CONTENT_FORMAT_TEXT_PLAIN,
+			  state_p, strlen(state_p));
+		if (err) {
+			LOG_WRN("Failed to update Button_%c: %d", 'A'+i, err);
+		}
+	}
+}
+
+K_WORK_DEFINE(button_action_work, button_action_work_handler);
 
 /**
  * @brief Handle button presses and update LEDs
@@ -98,7 +138,7 @@ void button_pressed(const struct device *dev, struct gpio_callback *cb,
 	else
 	{
 		/* register the timeout value for the next press */
-		debounce = sys_clock_timeout_end_calc(K_MSEC(200));
+		debounce = sys_clock_timeout_end_calc(K_MSEC(DEBOUNCE_MS));
 	}
 
 	/* Array to check which button was pressed */
@@ -114,33 +154,11 @@ void button_pressed(const struct device *dev, struct gpio_callback *cb,
 		if (button_result[i] != 0)
 		{
 			LOG_INF("Button %c pressed", 'A'+i);
-			int8_t toggle_val = led_states[i].state > 0 ? 0 : 1;
-			led_states[i].state = toggle_val;
-			/* update local LED output immediately */
-			ws2812_blit(strip, led_states, STRIP_NUM_PIXELS);
-
-			gpio_pin_set_dt(&act, 1);
-			k_timer_start(&make_sound_timer, K_USEC(notes[i]), K_USEC(notes[i]));
-			k_timer_start(&end_note_timer, K_MSEC(200), K_NO_WAIT);
-
-			/* Build the endpoint with the correct LED number */
-			uint8_t endpoint[32];
-			snprintk(endpoint, sizeof(endpoint)-1, ".d/Button_%c", 'A'+i);
-			/* convert the toggle_val digit into a string */
-			char false_buf[6] = "false";
-			char true_buf[5] = "true";
-			char *state_p = toggle_val==0 ? false_buf : true_buf;
-
-			/* Update the LightDB state endpoint on the Golioth Cloud */
-			int err = golioth_lightdb_set(client,
-				  endpoint,
-				  COAP_CONTENT_FORMAT_TEXT_PLAIN,
-				  state_p, strlen(state_p));
-			if (err) {
-				LOG_WRN("Failed to update Button_%c: %d", 'A'+i, err);
-			}
+			k_msgq_put(&button_action_msgq, &i, K_NO_WAIT);
 		}
 	}
+
+	k_work_submit(&button_action_work);
 }
 
 static void golioth_on_message(struct golioth_client *client,
