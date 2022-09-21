@@ -24,6 +24,8 @@ LOG_MODULE_REGISTER(golioth_magtag, LOG_LEVEL_DBG);
 static struct golioth_client *client = GOLIOTH_SYSTEM_CLIENT_GET();
 static K_SEM_DEFINE(connected, 0, 1);
 static struct coap_reply coap_replies[1];
+#define LEDS_ENDPOINT		"leds"
+#define LEDS_DEFAULT_MASK	15
 uint8_t led_bitmask;
 uint8_t update_leds_flag;
 
@@ -53,6 +55,7 @@ static int on_update(const struct coap_packet *response,
 		     struct coap_reply *reply,
 		     const struct sockaddr *from)
 {
+	int err;
 	char str[64];
 	uint16_t payload_len;
 	const uint8_t *payload;
@@ -71,6 +74,25 @@ static int on_update(const struct coap_packet *response,
 	str[payload_len] = '\0';
 
 	LOG_DBG("payload: %s", str);
+
+	if (strcmp(str,"null") == 0) {
+		LOG_INF("Payload is null; initializing cloud endpoint: %s = %d",
+				LEDS_ENDPOINT,
+				LEDS_DEFAULT_MASK);
+		snprintk(str, 6, "%d", LEDS_DEFAULT_MASK);
+
+		err = golioth_lightdb_set(client,
+				GOLIOTH_LIGHTDB_PATH(LEDS_ENDPOINT),
+				GOLIOTH_CONTENT_FORMAT_APP_JSON,
+				str,
+				strlen(str));
+		if (err) {
+			LOG_WRN("Failed to create %s endpoint: %d",
+					LEDS_ENDPOINT,
+					err);
+		}
+		return 0;
+	}
 
 	/* Process the received payload */
 	char *ptr;
@@ -150,7 +172,7 @@ static void golioth_on_connect(struct golioth_client *client)
 	 * the value doesn't change.
 	 */
 	err = golioth_lightdb_observe(client,
-				      GOLIOTH_LIGHTDB_PATH("leds"),
+				      GOLIOTH_LIGHTDB_PATH(LEDS_ENDPOINT),
 				      COAP_CONTENT_FORMAT_TEXT_PLAIN,
 				      observe_reply, on_update);
 
