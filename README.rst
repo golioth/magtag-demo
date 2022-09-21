@@ -97,7 +97,7 @@ initialized. That process can take several seconds, at which point the two cente
 LEDs will turn blue to indicate the board is trying to establish an internet
 connection and connect with Golioth.
 
-When a connection with Golioth is achieved, all three LEDs will turn green. The
+When a connection with Golioth is achieved, all four LEDs will turn green. The
 board will then begin sending "Hello!" messages to the Golioth cloud. You should
 see this indicated on on the ePaper screen, and can confirm the messages are
 being received by visiting `the Golioth console`_.
