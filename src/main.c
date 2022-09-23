@@ -28,6 +28,8 @@ static k_tid_t _system_thread = 0;
 
 static struct sensor_value accel[3];
 
+struct k_mutex epaper_mutex;
+
 enum golioth_settings_status on_setting(
 		const char *key,
 		const struct golioth_settings_value *value)
@@ -46,9 +48,16 @@ enum golioth_settings_status on_setting(
 
 		/* Setting has passed all checks, so apply it to the loop delay */
 		_loop_delay_s = (int32_t)value->i64;
-		LOG_INF("Set loop delay to %d seconds", _loop_delay_s);
-		k_wakeup(_system_thread);
+		char sbuf[32];
+		snprintk(sbuf, 32, "New loop delay: %d ", _loop_delay_s);
+		LOG_INF("%s", sbuf);
 
+		if (k_mutex_lock(&epaper_mutex, K_SECONDS(1))==0) {
+			epaper_autowrite(sbuf, strlen(sbuf));
+			k_mutex_unlock(&epaper_mutex);
+		}
+
+		k_wakeup(_system_thread);
 		return GOLIOTH_SETTINGS_SUCCESS;
 	}
 
@@ -122,6 +131,9 @@ void main(void)
 	ws2812_init();
 	/* show two blue pixels to show until we connect to Golioth */
 	leds_immediate(BLACK, BLUE, BLUE, BLACK);
+
+	k_mutex_init(&epaper_mutex);
+	k_mutex_lock(&epaper_mutex, K_FOREVER);
 	epaper_init();
 	if (IS_ENABLED(CONFIG_GOLIOTH_SAMPLES_COMMON)) {
 		net_connect();
@@ -137,6 +149,7 @@ void main(void)
 	/* turn LEDs green to indicate connection */
 	leds_immediate(GREEN, GREEN, GREEN, GREEN);
 	epaper_autowrite("Connected to Golioth!", 21);
+	k_mutex_unlock(&epaper_mutex);
 
 	/* Accelerometer */
 	accelerometer_init();
@@ -159,7 +172,10 @@ void main(void)
 						sensor_value_to_double(&accel[1]),
 						sensor_value_to_double(&accel[2])
 						);
-			epaper_autowrite(str, strlen(str));
+			if (k_mutex_lock(&epaper_mutex, K_MSEC(100))==0) {
+				epaper_autowrite(str, strlen(str));
+				k_mutex_unlock(&epaper_mutex);
+			}
 		}
 
 		k_sleep(K_SECONDS(_loop_delay_s));
