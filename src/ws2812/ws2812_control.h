@@ -35,7 +35,7 @@ struct led_color_state {
 extern struct led_color_state led_states[STRIP_NUM_PIXELS];
 
 extern struct led_rgb pixels[STRIP_NUM_PIXELS];
-static const struct device *strip = DEVICE_DT_GET(STRIP_NODE);
+static const struct device *const strip = DEVICE_DT_GET(STRIP_NODE);
 
 /* ws2812 prototypes*/
 void clear_pixels(void);
