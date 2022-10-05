@@ -51,7 +51,24 @@ void ws2812_blit(const struct device *dev, struct led_color_state *states, uint8
 }
 
 void ws2812_init(void) {
-    /* ws2812 */
+	/* ws2812 */
+
+	for (uint8_t i=0; i<STRIP_NUM_PIXELS; i++) {
+		led_states[i].color = 0;
+		led_states[i].state = -1;
+	}
+
+	#if defined(CONFIG_SOC_ESP32S2)
+	/* This is a hack to fix incorrect SPI polarity on ESP32s2-based boards */
+	
+	led_strip_update_rgb(strip, pixels, STRIP_NUM_PIXELS);
+	#define SPI_CTRL_REG 0x8
+	#define SPI_D_POL 19
+	uint32_t* myreg;
+	myreg = (uint32_t*)(DT_REG_ADDR(DT_PARENT(DT_ALIAS(led_strip)))+SPI_CTRL_REG);
+	*myreg &= ~(1<<SPI_D_POL);
+	LOG_DBG("Fixing ESP32s2 Register %p Value: 0x%x", myreg, *myreg);
+	#endif
 
 	/* Turn on power to the ws2812 neopixels */
 	const struct gpio_dt_spec neopower_dev = GPIO_DT_SPEC_GET(NEOPOWER_NODE, gpios);
@@ -59,21 +76,8 @@ void ws2812_init(void) {
 	if (ret < 0) {
 		LOG_ERR("Failed to configure NEOPOWER pin: %d", ret);
 	}
+
 	gpio_pin_set_dt(&neopower_dev, 0);
-
-	#if defined(CONFIG_SOC_ESP32S2)
-	/* This is a hack to fix incorrect SPI polarity on ESP32s2-based boards */
-	#define SPI_CTRL_REG 0x8
-	#define SPI_D_POL 19
-	uint32_t* myreg = (uint32_t*)(DT_REG_ADDR(DT_PARENT(DT_ALIAS(led_strip)))+SPI_CTRL_REG);
-	*myreg &= ~(1<<SPI_D_POL);
-	LOG_DBG("Fixing ESP32s2 Register %p Value: 0x%x", myreg, *myreg);
-	#endif
-
-    for (uint8_t i=0; i<STRIP_NUM_PIXELS; i++) {
-        led_states[i].color = 0;
-        led_states[i].state = -1;
-    }
 }
 
 /**
