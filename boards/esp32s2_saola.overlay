@@ -1,3 +1,7 @@
+&wifi {
+	status = "okay";
+};
+
 &i2c1 {
 	pinctrl-0 = <&i2c1_default>;
 	status = "okay";
@@ -53,6 +57,8 @@
         sw1 = &button1;
 		sw2 = &button2;
         sw3 = &button3;
+        activate = &active;
+		sound = &sound;
 	};
 
 	leds {
@@ -74,6 +80,14 @@
         };
 		rst: reset {
             gpios = <&gpio0 6 GPIO_ACTIVE_HIGH>;
+        };
+        active: active_pin {
+            gpios = <&gpio0 16 GPIO_ACTIVE_HIGH>;
+            label = "Activate speaker";
+        };
+		sound: sound_pin {
+            gpios = <&gpio0 17 GPIO_ACTIVE_HIGH>;
+            label = "Drive speaker";
         };
     };
 
