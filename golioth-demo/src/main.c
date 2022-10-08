@@ -15,10 +15,10 @@ LOG_MODULE_REGISTER(golioth_magtag, LOG_LEVEL_DBG);
 #include <zephyr/net/coap.h>
 
 /* MagTag specific hardware includes */
-#include "epaper/magtag_epaper.h"
-#include "ws2812/ws2812_control.h"
-#include "accelerometer/accel.h"
-#include "buttons/buttons.h"
+#include "magtag-common/magtag_epaper.h"
+#include "magtag-common/ws2812_control.h"
+#include "magtag-common/accel.h"
+#include "magtag-common/buttons.h"
 
 #define DEBOUNCE_MS	200
 volatile uint64_t debounce = 0;

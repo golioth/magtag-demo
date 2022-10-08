@@ -19,4 +19,6 @@ config MAGTAG_NAME
 
 endif # DNS_RESOLVER
 
+rsource "../magtag-common/KConfig"
+
 source "Kconfig.zephyr"
