@@ -1,0 +1,47 @@
+&i2c1 {
+	sda-pin = <33>;
+	scl-pin = <34>;
+	status = "okay";
+
+	lis3dh@25 {
+			compatible = "st,lis2dh";
+			reg = <25>;
+			label = "LIS3DH";
+	};
+};
+
+&spi3 {
+    mosi-pin = < 18 >;
+	miso-pin = < 0 >;
+	sclk-pin = < 0 >;
+	csel-pin = < 0 >;
+	led_strip: ws2812@0 {
+		compatible = "worldsemi,ws2812-spi";
+		label = "WS2812";
+
+		/* SPI */
+		reg = <0>; /* ignored, but necessary for SPI bindings */
+		spi-max-frequency = <4000000>;
+
+		/* WS2812 */
+		chain-length = <4>; /* arbitrary; change at will */
+		spi-one-frame = <0x70>;
+		spi-zero-frame = <0x40>;
+		color-mapping = <2 1 3>;
+	};
+};
+
+/ {
+	aliases {
+		led-strip = &led_strip;
+		neopower = &neopower;
+	};
+
+	leds {
+        compatible = "gpio-leds";
+        neopower: neo_power {
+            gpios = <&gpio0 21 GPIO_ACTIVE_HIGH>;
+            label = "Neopower";
+        };
+    };
+};

@@ -17,6 +17,7 @@ static const struct led_rgb colors[] = {
 	RGB(0x0F, 0x00, 0x00), /* red */
 	RGB(0x00, 0x0F, 0x00), /* green */
 	RGB(0x00, 0x00, 0x0F), /* blue */
+	RGB(0x08, 0x08, 0x00), /* yellow */
 };
 
 /* Color name definitions match colors[] index */
@@ -24,6 +25,7 @@ static const struct led_rgb colors[] = {
 #define RED		1
 #define GREEN	2
 #define BLUE	3
+#define YELLOW	4
 
 struct led_color_state {
   uint8_t color;
