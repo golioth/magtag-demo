@@ -1,4 +1,4 @@
-#include "ws2812_control.h"
+#include "magtag-common/ws2812_control.h"
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(golioth_ws2812, LOG_LEVEL_DBG);
 
