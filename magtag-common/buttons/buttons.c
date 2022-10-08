@@ -1,4 +1,4 @@
-#include "buttons.h"
+#include "magtag-common/buttons.h"
 
 /**
  * @brief set up buttons and interrupts
