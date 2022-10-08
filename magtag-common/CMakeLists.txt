@@ -1,0 +1,8 @@
+zephyr_library_sources_ifdef(CONFIG_MAGTAG_ACCELEROMETER accelerometer/accel.c)
+zephyr_library_sources_ifdef(CONFIG_MAGTAG_BUTTONS buttons/buttons.c)
+zephyr_library_sources_ifdef(CONFIG_MAGTAG_EPAPER epaper/magtag_epaper.c)
+zephyr_library_sources_ifdef(CONFIG_MAGTAG_EPAPER epaper/magtag_epaper_hal.c)
+zephyr_library_sources_ifdef(CONFIG_MAGTAG_WS2812 ws2812/ws2812_control.c)
+
+zephyr_include_directories(include)
+

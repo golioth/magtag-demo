@@ -1,0 +1,34 @@
+#
+# Copyright (C) 2022 Golioth, Inc.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+menuconfig MAGTAG_COMMON
+	bool "Common helper code for Golioth MagTag Demo"
+	help
+	  Build and link common code that is shared across MagTag samples.
+
+if MAGTAG_COMMON
+
+config MAGTAG_ACCELEROMETER
+	bool "Handle accelerometer readings"
+	help
+	  Get accel from DeviceTree and write readings to shared sensor struct
+
+config MAGTAG_BUTTONS
+	bool "Process button reads"
+	help
+	  Configure buttons for interrupts with callbacks
+
+config MAGTAG_EPAPER
+	bool "2.9\" grayscale ePaper driver"
+	help
+	  Hardware driver for ePaper, including text and partial writes
+
+config MAGTAG_WS2812
+	bool "ws2812 helper functions"
+	help
+	  Intialize and update LED color and state
+
+endif # MAGTAG_COMMON
