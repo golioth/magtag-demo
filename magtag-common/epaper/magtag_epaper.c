@@ -27,7 +27,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "magtag_epaper.h"
+#include "magtag-common/magtag_epaper.h"
 #include "magtag_epaper_hal.h"
 #include "font5x8.h"
 #include "ubuntu_monospaced_bold_10x16.h"

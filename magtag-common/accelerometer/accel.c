@@ -1,4 +1,4 @@
-#include "accel.h"
+#include "magtag-common/accel.h"
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(golioth_accel, LOG_LEVEL_DBG);
 
@@ -39,5 +39,11 @@ void fetch_and_display(const struct device *sensor, struct sensor_value accel[3]
 	}
 	if (rc < 0) {
 		LOG_ERR("ERROR: Update failed: %d", rc);
-	}
+	} else {
+		LOG_INF("#%u @ %u ms: %sx %f , y %f , z %f",
+		       count, k_uptime_get_32(), overrun,
+		       sensor_value_to_double(&accel[0]),
+		       sensor_value_to_double(&accel[1]),
+		       sensor_value_to_double(&accel[2]));
+    }
 }
