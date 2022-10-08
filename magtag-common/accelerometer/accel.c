@@ -1,4 +1,4 @@
-#include "accel.h"
+#include "magtag-common/accel.h"
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(golioth_accel, LOG_LEVEL_DBG);
 
