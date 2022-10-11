@@ -68,12 +68,21 @@ enum golioth_settings_status on_setting(
 static void golioth_on_connect(struct golioth_client *client)
 {
 	k_sem_give(&connected);
-
+	
 	int err = golioth_settings_register_callback(client, on_setting);
 
 	if (err) {
 		LOG_ERR("Failed to register settings callback: %d", err);
 	}
+}
+
+static int lightdb_stream_handler(struct golioth_req_rsp *rsp)
+{
+	if (rsp->err) {
+		LOG_WRN("Failed to stream sensor data: %d", rsp->err);
+		return rsp->err;
+	}
+	return 0;
 }
 
 static int record_accelerometer(const struct device *sensor)
@@ -90,34 +99,14 @@ static int record_accelerometer(const struct device *sensor)
 			sensor_value_to_double(&accel[2])
 			);
 
-	/* Send string to Golioth LightDB Stream */
-	int err = golioth_lightdb_set(client,
-				GOLIOTH_LIGHTDB_STREAM_PATH("accel"),
-				COAP_CONTENT_FORMAT_TEXT_PLAIN,
-				str, strlen(str));
+	int err = golioth_stream_push_cb(client, "accel",
+				GOLIOTH_CONTENT_FORMAT_APP_JSON,
+				str, strlen(str),
+				lightdb_stream_handler, NULL);
 	if (err) {
 		return err;
 	}
 	return 0;
-}
-
-/*
- * In the `main` function, this function is registed to be
- * called when the device receives a packet from the Golioth server.
- */
-static void golioth_on_message(struct golioth_client *client,
-			       struct coap_packet *rx)
-{
-	uint16_t payload_len;
-	const uint8_t *payload;
-	uint8_t type;
-
-	type = coap_header_get_type(rx);
-	payload = coap_packet_get_payload(rx, &payload_len);
-
-	if (!IS_ENABLED(CONFIG_LOG_BACKEND_GOLIOTH) && payload) {
-		LOG_HEXDUMP_DBG(payload, payload_len, "Payload");
-	}
 }
 
 void main(void)
@@ -140,7 +129,6 @@ void main(void)
 	}
 
 	client->on_connect = golioth_on_connect;
-	client->on_message = golioth_on_message;
 	golioth_system_client_start();
 
 	/* wait until we've connected to golioth */
