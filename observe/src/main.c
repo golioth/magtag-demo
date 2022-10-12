@@ -27,7 +27,6 @@ static struct coap_reply coap_replies[1];
 #define LEDS_ENDPOINT		"leds"
 #define LEDS_DEFAULT_MASK	15
 uint8_t led_bitmask;
-uint8_t update_leds_flag;
 
 #define LINE_ARRAY_SIZE		16
 #define LINE_STRING_LEN		28	/* must be a multiple of 4!! */
@@ -46,6 +45,26 @@ void write_screen_from_buffer_work_handler(struct k_work *work) {
 	}
 }
 K_WORK_DEFINE(write_screen_from_buffer_work, write_screen_from_buffer_work_handler);
+
+void led_work_handler(struct k_work *work) {
+	/* Set new LED on/off values based on led_bitmask */
+	leds_immediate(
+		(led_bitmask&8)?RED:BLACK,
+		(led_bitmask&4)?GREEN:BLACK,
+		(led_bitmask&2)?BLUE:BLACK,
+		(led_bitmask&1)?RED:BLACK
+	);
+}
+K_WORK_DEFINE(led_work, led_work_handler);
+
+void write_to_screen(char *str, uint8_t len) {
+	if (k_msgq_put(&line_msgq, str, K_NO_WAIT) != 0) {
+		LOG_ERR("Message buffer is full, skipping epaper write");
+	}
+	else {
+		k_work_submit(&write_screen_from_buffer_work);
+	}
+}
 
 static int lightdb_set_handler(struct golioth_req_rsp *rsp) {
 	if (rsp->err) {
@@ -111,9 +130,14 @@ static int observe_handler(struct golioth_req_rsp *rsp) {
 	}
 	else
 	{
-		/* Value is valid, save it and flag for an LED update */
+		/* Value is valid, save it and submit worker for LED update */
 		led_bitmask = (uint8_t)ret;
-		++update_leds_flag;
+		k_work_submit(&led_work);
+
+		/* Write message to ePaper display about new led_bitmask */
+		uint8_t sbuf[LINE_STRING_LEN];
+		snprintk(sbuf, LINE_STRING_LEN, "new led_bitmask: %d", led_bitmask);
+		write_to_screen(sbuf, strlen(sbuf));
 	}
 
 	return 0;
@@ -155,7 +179,6 @@ static enum golioth_rpc_status on_epaper(QCBORDecodeContext *request_params_arra
 static void golioth_on_connect(struct golioth_client *client)
 {
 	int err;
-	update_leds_flag = 0;
 
 	k_sem_give(&connected);
 
@@ -200,33 +223,5 @@ void main(void)
 
 	/* turn LEDs green to indicate connection */
 	leds_immediate(GREEN, GREEN, GREEN, GREEN);
-	epaper_autowrite("Connected to Golioth!", 21);
-
-
-	int counter = 0;
-	int err;
-	while (true) {
-		if (update_leds_flag)
-		{
-			/* Set new LED on/off values based on led_bitmask */
-			leds_immediate(
-				(led_bitmask&8)?RED:BLACK,
-				(led_bitmask&4)?GREEN:BLACK,
-				(led_bitmask&2)?BLUE:BLACK,
-				(led_bitmask&1)?RED:BLACK
-			);
-			update_leds_flag = 0;
-
-			/* Write message to ePaper display about new led_bitmask */
-			uint8_t sbuf[LINE_STRING_LEN];
-			snprintk(sbuf, LINE_STRING_LEN, "new led_bitmask: %d", led_bitmask);
-			if (k_msgq_put(&line_msgq, sbuf, K_NO_WAIT) != 0) {
-				LOG_ERR("Message buffer is full, skipping epaper write");
-			}
-			else {
-				k_work_submit(&write_screen_from_buffer_work);
-			}
-		}
-		k_sleep(K_MSEC(200));
-	}
+	write_to_screen("Connected to Golioth!", 21);
 }
