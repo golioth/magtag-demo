@@ -32,6 +32,10 @@ uint8_t led_bitmask;
 #define LINE_STRING_LEN		28	/* must be a multiple of 4!! */
 K_MSGQ_DEFINE(line_msgq, LINE_STRING_LEN, LINE_ARRAY_SIZE, 4);
 
+/*
+ * Work handler to read strings from a message queue and write them to the
+ * ePaper display
+ */
 void write_screen_from_buffer_work_handler(struct k_work *work) {
 	char str[LINE_STRING_LEN];
 	while(k_msgq_num_used_get(&line_msgq)) {
@@ -46,6 +50,9 @@ void write_screen_from_buffer_work_handler(struct k_work *work) {
 }
 K_WORK_DEFINE(write_screen_from_buffer_work, write_screen_from_buffer_work_handler);
 
+/*
+ * Work handler to update LED state
+ */
 void led_work_handler(struct k_work *work) {
 	/* Set new LED on/off values based on led_bitmask */
 	leds_immediate(
@@ -57,15 +64,22 @@ void led_work_handler(struct k_work *work) {
 }
 K_WORK_DEFINE(led_work, led_work_handler);
 
+/*
+ * Helper function adds text strings to the ePaper message queue and calls the
+ * work handler for the display
+ */
 void write_to_screen(char *str, uint8_t len) {
 	if (k_msgq_put(&line_msgq, str, K_NO_WAIT) != 0) {
-		LOG_ERR("Message buffer is full, skipping epaper write");
+		LOG_ERR("Message buffer is full, skipping ePaper write");
 	}
 	else {
 		k_work_submit(&write_screen_from_buffer_work);
 	}
 }
 
+/*
+ * Callback function to display error messages when setting values on LightDB
+ */
 static int lightdb_set_handler(struct golioth_req_rsp *rsp) {
 	if (rsp->err) {
 		LOG_WRN("Failed to set LightDB: %d", rsp->err);
@@ -75,7 +89,7 @@ static int lightdb_set_handler(struct golioth_req_rsp *rsp) {
 }
 
 /*
- * This function is registed to be called when the data
+ * This function is registered to be called when the data
  * stored at `/leds` changes.
  */
 static int observe_handler(struct golioth_req_rsp *rsp) {
@@ -98,6 +112,7 @@ static int observe_handler(struct golioth_req_rsp *rsp) {
 	LOG_DBG("payload: %s", str);
 
 	if (strcmp(str,"null") == 0) {
+		/* If endpoint is missing on Golioth Cloud, set it up here */
 		LOG_INF("Payload is null; initializing cloud endpoint: %s = %d",
 				LEDS_ENDPOINT,
 				LEDS_DEFAULT_MASK);
@@ -147,8 +162,8 @@ static int observe_handler(struct golioth_req_rsp *rsp) {
 }
 
 /*
- * In the `main` function, this function is registed to be
- * called when the device connects to the Golioth server.
+ * Callback for Remote Procedure Call (RPC) from Golioth. Prints string to the
+ * ePaper display.
  */
 static enum golioth_rpc_status on_epaper(QCBORDecodeContext *request_params_array,
 										 QCBOREncodeContext *response_detail_map,
@@ -171,7 +186,7 @@ static enum golioth_rpc_status on_epaper(QCBORDecodeContext *request_params_arra
 	uint8_t len = LINE_STRING_LEN >= cbor_len ? cbor_len : LINE_STRING_LEN;
 	snprintk(sbuf, len, "%s", (char *)rpc_string.ptr);
 	if (k_msgq_put(&line_msgq, sbuf, K_NO_WAIT) != 0) {
-		LOG_ERR("Message buffer is full, skipping epaper write");
+		LOG_ERR("Message buffer is full, skipping ePaper write");
 	}
 	else {
 		k_work_submit(&write_screen_from_buffer_work);
@@ -179,6 +194,11 @@ static enum golioth_rpc_status on_epaper(QCBORDecodeContext *request_params_arra
 	return GOLIOTH_RPC_OK;
 }
 
+/*
+ * In the `main` function, this function is registered to be called when the
+ * device connects to the Golioth server. It sets up the observation of an RPC
+ * function and the LightDB State endpoint for the LED control
+ */
 static void golioth_on_connect(struct golioth_client *client)
 {
 	int err;
@@ -201,7 +221,7 @@ static void golioth_on_connect(struct golioth_client *client)
 			observe_handler, NULL);
 
 	if (err) {
-		LOG_WRN("failed to observe lightdb path: %d", err);
+		LOG_WRN("failed to observe LightDB path: %d", err);
 	}
 }
 
@@ -221,10 +241,15 @@ void main(void)
 	client->on_connect = golioth_on_connect;
 	golioth_system_client_start();
 
-	/* wait until we've connected to golioth */
+	/* wait until we've connected to Golioth */
 	k_sem_take(&connected, K_FOREVER);
 
 	/* turn LEDs green to indicate connection */
 	leds_immediate(GREEN, GREEN, GREEN, GREEN);
 	write_to_screen("Connected to Golioth!", 21);
+
+	/*
+	 * No need for a while(1) loop. Callbacks and System Workqueue will handle
+	 * everything
+	 */
 }
