@@ -122,11 +122,15 @@ static int observe_handler(struct golioth_req_rsp *rsp) {
 	/* Process the received payload */
 	char *ptr;
 	long ret;
+	uint8_t sbuf[LINE_STRING_LEN] = {0};
+
 	/* Convert string to a number */
 	ret = strtol(str, &ptr, 10);
 	if (ret < 0 || ret > 15) {
 		/* Test for bounded value */
 		LOG_DBG("Payload was not a number in range [0..15]");
+		/* Write message to display that value is not valid */
+		snprintk(sbuf, LINE_STRING_LEN, "Invalid bitmask: %s", str);
 	}
 	else
 	{
@@ -135,10 +139,9 @@ static int observe_handler(struct golioth_req_rsp *rsp) {
 		k_work_submit(&led_work);
 
 		/* Write message to ePaper display about new led_bitmask */
-		uint8_t sbuf[LINE_STRING_LEN];
 		snprintk(sbuf, LINE_STRING_LEN, "new led_bitmask: %d", led_bitmask);
-		write_to_screen(sbuf, strlen(sbuf));
 	}
+	write_to_screen(sbuf, strlen(sbuf));
 
 	return 0;
 }
