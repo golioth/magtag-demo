@@ -39,6 +39,15 @@ static void golioth_on_connect(struct golioth_client *client)
 	k_sem_give(&connected);
 }
 
+static int lightdb_handler(struct golioth_req_rsp *rsp)
+{
+	if (rsp->err) {
+		LOG_WRN("Asnyc Golioth function failed: %d", rsp->err);
+		return rsp->err;
+	}
+	return 0;
+}
+
 static int record_accelerometer(const struct device *sensor)
 {
 	struct sensor_value accel[3];
@@ -50,10 +59,10 @@ static int record_accelerometer(const struct device *sensor)
 			sensor_value_to_double(&accel[1]),
 			sensor_value_to_double(&accel[2])
 			);
-	int err = golioth_lightdb_set(client,
-				GOLIOTH_LIGHTDB_STREAM_PATH("accel"),
-				COAP_CONTENT_FORMAT_TEXT_PLAIN,
-				str, strlen(str));
+	int err = golioth_stream_push_cb(client, "accel",
+				GOLIOTH_CONTENT_FORMAT_APP_JSON,
+				str, strlen(str),
+				lightdb_handler, NULL);
 	if (err) {
 		return err;
 	}
@@ -98,17 +107,17 @@ void button_action_work_handler(struct k_work *work) {
 
 		/* Build the endpoint with the correct LED number */
 		uint8_t endpoint[32];
-		snprintk(endpoint, sizeof(endpoint)-1, ".d/Button_%c", 'A'+i);
+		snprintk(endpoint, sizeof(endpoint)-1, "Button_%c", 'A'+i);
 		/* convert the toggle_val digit into a string */
 		char false_buf[6] = "false";
 		char true_buf[5] = "true";
 		char *state_p = toggle_val==0 ? false_buf : true_buf;
 
 		/* Update the LightDB state endpoint on the Golioth Cloud */
-		int err = golioth_lightdb_set(client,
-			  endpoint,
-			  COAP_CONTENT_FORMAT_TEXT_PLAIN,
-			  state_p, strlen(state_p));
+		int err = golioth_lightdb_set_cb(client, endpoint,
+				GOLIOTH_CONTENT_FORMAT_APP_JSON,
+				state_p, strlen(state_p),
+				lightdb_handler, NULL);
 		if (err) {
 			LOG_WRN("Failed to update Button_%c: %d", 'A'+i, err);
 		}
@@ -161,21 +170,6 @@ void button_pressed(const struct device *dev, struct gpio_callback *cb,
 	k_work_submit(&button_action_work);
 }
 
-static void golioth_on_message(struct golioth_client *client,
-			       struct coap_packet *rx)
-{
-	uint16_t payload_len;
-	const uint8_t *payload;
-	uint8_t type;
-
-	type = coap_header_get_type(rx);
-	payload = coap_packet_get_payload(rx, &payload_len);
-
-	if (!IS_ENABLED(CONFIG_LOG_BACKEND_GOLIOTH) && payload) {
-		LOG_HEXDUMP_DBG(payload, payload_len, "Payload");
-	}
-}
-
 void main(void)
 {
 	LOG_DBG("Start MagTag demo");
@@ -200,7 +194,6 @@ void main(void)
 	}
 
 	client->on_connect = golioth_on_connect;
-	client->on_message = golioth_on_message;
 	golioth_system_client_start();
 
 	/* wait until we've connected to golioth */
@@ -217,18 +210,9 @@ void main(void)
 	gpio_pin_configure_dt(&snd, GPIO_OUTPUT_ACTIVE);
 	gpio_pin_set_dt(&act, 0);
 
-	/* Start Golioth */
-	client->on_message = golioth_on_message;
-	golioth_system_client_start();
-
 	/* ePaper */
 	epaper_WriteDoubleLine(CONFIG_MAGTAG_NAME, strlen(CONFIG_MAGTAG_NAME), 7);
 
-	/* wait until we've connected to golioth */
-	while (golioth_ping(client) != 0)
-	{
-		k_msleep(1000);
-	}
 	/* write successful connection message to screen */
 	LOG_INF("Connected to Golioth!: %s", CONFIG_MAGTAG_NAME);
 	epaper_autowrite("Connected to Golioth!", 21);
@@ -243,10 +227,10 @@ void main(void)
 	/* write starting button values to LightDB state */
 	uint8_t endpoint[32];
 	for (uint8_t i=0; i<4; i++) {
-		snprintk(endpoint, sizeof(endpoint)-1, ".d/Button_%c", 'A'+i);
+		snprintk(endpoint, sizeof(endpoint)-1, "Button_%c", 'A'+i);
 		int err = golioth_lightdb_set(client,
 				  endpoint,
-				  COAP_CONTENT_FORMAT_TEXT_PLAIN,
+				  GOLIOTH_CONTENT_FORMAT_APP_JSON,
 				  "true", 4);
 		if (err) {
 			LOG_WRN("Failed to update Button_%c: %d", 'A'+i, err);
