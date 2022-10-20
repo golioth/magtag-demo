@@ -367,6 +367,13 @@ void epaper_FullClear(void) {
     EPD_2IN9D_Sleep();
 }
 
+void epaper_ShowFullFrame(const char *frame) {
+    EPD_2IN9D_Display(frame);
+    EPD_2IN9D_Refresh();
+    EPD_2IN9D_Display(frame);
+    EPD_2IN9D_SetPartReg();
+}
+
 /**
  * @brief Initialize pins used to drive the display, execute the initialization
  * process, and display the Golioth logo
@@ -382,11 +389,7 @@ void epaper_init(void) {
     EPD_2IN9D_Clear();
 
     LOG_INF("Show Golioth logo");
-    EPD_2IN9D_Display((void *)golioth_logo); /* cast because function is not expecting a CONST array) */
-
-    EPD_2IN9D_Refresh();
-    EPD_2IN9D_Display((void *)golioth_logo); /* cast because function is not expecting a CONST array) */
-    EPD_2IN9D_SetPartReg();
+    epaper_ShowFullFrame((void *)golioth_logo); /* cast because function is not expecting a CONST array) */
 }
 
 /******************************************************************************
