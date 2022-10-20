@@ -32,6 +32,7 @@ void EPD_2IN9D_Display(uint8_t *Image);
 void EPD_2IN9D_DisplayPart(uint8_t *Image);
 void EPD_2in9D_PartialClear(void);
 void epaper_FullClear(void);
+void epaper_ShowFullFrame(const char *frame);
 void epaper_init(void);
 void EPD_2IN9D_Sleep(void);
 
