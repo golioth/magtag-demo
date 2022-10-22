@@ -565,12 +565,35 @@ void epaper_SendDoubleTextLine(uint8_t *str, uint8_t str_len, bool full)
     for (uint8_t i=0; i<vamp_count; i++) EPD_2IN9D_SendData(0xff); //Unused columns
 }
 
-void epaper_SendLargeTextLine(uint8_t *str, uint8_t str_len)
-{
 #define CHARS_PER_LINE  28  // 296/20 = 28 (remainder of 6)
 #define REMAINDER_PAD   6   // Used to pad ends of lines
 #define ASCII_OFFSET    32  // Font start with space (char 32)
 #define FONT_CHAR_S     20  // 2 bytes per column, 10 columns
+
+/**
+ * @brief Write one character from font file to ePaper display
+ *
+ * @param letter    The letter to write to the display
+ * @param font_p    Pointer to the font array
+ * @param bytes_in_letter    Total bytes neede from the font file for this
+ *                                 letter
+ */
+void epaper_SendLetter(uint8_t letter, char *font_p, uint8_t bytes_in_letter)
+{
+    /* Write space if letter is out of bounds */
+    if ((letter < ' ') || (letter> '~')) { letter = ' '; }
+
+    /* ASCII space=32 but font file begins at 0 */
+    letter -= ASCII_OFFSET;
+
+    for (uint16_t i=0; i<bytes_in_letter; i++) {
+        uint8_t letter_column = *(font_p + (letter*bytes_in_letter) + i);
+        EPD_2IN9D_SendData(~letter_column);
+    }
+}
+
+void epaper_SendLargeTextLine(uint8_t *str, uint8_t str_len)
+{
 
     uint8_t letter;
     uint8_t letter_column;
@@ -578,15 +601,13 @@ void epaper_SendLargeTextLine(uint8_t *str, uint8_t str_len)
     for (uint8_t j=0; j<=CHARS_PER_LINE; j++) {
         if (j <= CHARS_PER_LINE-str_len) {
             /* String too short, send a space */
-            letter = ' '-ASCII_OFFSET;
+            letter = ' ';
         }
         else {
-            letter = str[CHARS_PER_LINE-j]-ASCII_OFFSET;
+            letter = str[CHARS_PER_LINE-j];
         }
-        for (uint16_t i = 0; i < FONT_CHAR_S; i++) {
-            letter_column = u_mono_bold_10x16[(letter*FONT_CHAR_S)+i];
-            EPD_2IN9D_SendData(~letter_column);
-        }
+
+        epaper_SendLetter(letter , u_mono_bold_10x16, FONT_CHAR_S);
     }
     for (uint8_t i=0; i<6; i++) EPD_2IN9D_SendData(0xff); //Unused columns
 }
