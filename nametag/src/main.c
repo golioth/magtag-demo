@@ -4,6 +4,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#define MYNAME	"John Hackworth"
+#define TITLE	"Nanotech Engineer"
+#define HANDLE	"@Kurt_Vonnegut"
+
 /* Logging */
 #include <stdlib.h>
 #include <zephyr/logging/log.h>
@@ -19,6 +23,12 @@ LOG_MODULE_REGISTER(golioth_magtag, LOG_LEVEL_DBG);
 #include "magtag-common/ws2812_control.h"
 #include "magtag-common/accel.h"
 #include "magtag-common/buttons.h"
+
+/* Images for the epaper screen */
+#include "../frame0.h"
+#include "../frame1.h"
+#include "../frame2.h"
+#include "../frame3.h"
 
 #define DEBOUNCE_MS	200
 volatile uint64_t debounce = 0;
@@ -121,6 +131,26 @@ void button_action_work_handler(struct k_work *work) {
 		if (err) {
 			LOG_WRN("Failed to update Button_%c: %d", 'A'+i, err);
 		}
+
+		/* Update the ePaper frame */
+		epaper_FullClear();
+
+		switch(i) {
+			case 1:
+				epaper_ShowFullFrame(frame1);
+				break;
+			case 2:
+				epaper_ShowFullFrame(frame2);
+				break;
+			case 3:
+				epaper_ShowFullFrame(frame3);
+				epaper_Write(MYNAME, strlen(MYNAME), 2, CENTER, 4);
+				epaper_WriteInverted(TITLE, strlen(TITLE), 11, CENTER, 2);
+				epaper_WriteInverted(HANDLE, strlen(HANDLE), 13, CENTER, 2);
+				break;
+			default:
+				epaper_ShowFullFrame(frame0);
+		}
 	}
 }
 
@@ -137,7 +167,7 @@ K_WORK_DEFINE(button_action_work, button_action_work_handler);
  * @param pins 	pinmask representing buttons that are pressed
  */
 void button_pressed(const struct device *dev, struct gpio_callback *cb,
-		    uint32_t pins)
+		uint32_t pins)
 {
 	if (debounce > k_uptime_ticks())
 	{
@@ -217,7 +247,7 @@ void main(void)
 	LOG_INF("Connected to Golioth!: %s", CONFIG_MAGTAG_NAME);
 	epaper_autowrite("Connected to Golioth!", 21);
 	EPD_2IN9D_Sleep();
-	
+
 	led_states[0].color = RED; led_states[0].state = 1;
 	led_states[1].color = GREEN; led_states[1].state = 1;
 	led_states[2].color = BLUE; led_states[2].state = 1;
@@ -229,9 +259,9 @@ void main(void)
 	for (uint8_t i=0; i<4; i++) {
 		snprintk(endpoint, sizeof(endpoint)-1, "Button_%c", 'A'+i);
 		int err = golioth_lightdb_set(client,
-				  endpoint,
-				  GOLIOTH_CONTENT_FORMAT_APP_JSON,
-				  "true", 4);
+					endpoint,
+					GOLIOTH_CONTENT_FORMAT_APP_JSON,
+					"true", 4);
 		if (err) {
 			LOG_WRN("Failed to update Button_%c: %d", 'A'+i, err);
 		}
