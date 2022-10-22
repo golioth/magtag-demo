@@ -92,7 +92,7 @@ bool EPD_2IN9D_IsAsleep(void) {
 }
 
 /******************************************************************************
-function :	Software reset
+function : Software reset
 parameter:
 ******************************************************************************/
 void EPD_2IN9D_Reset(void)
@@ -105,7 +105,7 @@ void EPD_2IN9D_Reset(void)
 }
 
 /******************************************************************************
-function :	send command
+function : Send command
 parameter:
      Reg : Command register
 ******************************************************************************/
@@ -118,7 +118,7 @@ void EPD_2IN9D_SendCommand(uint8_t Reg)
 }
 
 /******************************************************************************
-function :	send data
+function : Send data
 parameter:
     Data : Write data
 ******************************************************************************/
@@ -131,7 +131,7 @@ void EPD_2IN9D_SendData(uint8_t Data)
 }
 
 /******************************************************************************
-function :	Wait until the busy_pin goes LOW
+function : Wait until the busy_pin goes LOW
 parameter:
 ******************************************************************************/
 void EPD_2IN9D_ReadBusy(void)
@@ -142,45 +142,45 @@ void EPD_2IN9D_ReadBusy(void)
         EPD_2IN9D_SendCommand(0x71);
         busy = DEV_Digital_Read(EPD_BUSY_PIN);
         busy =!(busy & 0x01);
-		DEV_Delay_ms(20);
+                DEV_Delay_ms(20);
     } while(busy);
     DEV_Delay_ms(20);
     Debug("e-Paper busy release\r\n");
 }
 
 /******************************************************************************
-function :	LUT download
+function : LUT download
 parameter:
 ******************************************************************************/
 void EPD_2IN9D_SetPartReg(void)
 {
-    EPD_2IN9D_SendCommand(0x01);	//POWER SETTING
+    EPD_2IN9D_SendCommand(0x01); //POWER SETTING
     EPD_2IN9D_SendData(0x03);
     EPD_2IN9D_SendData(0x00);
     EPD_2IN9D_SendData(0x2b);
     EPD_2IN9D_SendData(0x2b);
     EPD_2IN9D_SendData(0x03);
 
-    EPD_2IN9D_SendCommand(0x06);	//boost soft start
-    EPD_2IN9D_SendData(0x17);     //A
-    EPD_2IN9D_SendData(0x17);     //B
-    EPD_2IN9D_SendData(0x17);     //C
+    EPD_2IN9D_SendCommand(0x06); //boost soft start
+    EPD_2IN9D_SendData(0x17); //A
+    EPD_2IN9D_SendData(0x17); //B
+    EPD_2IN9D_SendData(0x17); //C
 
     EPD_2IN9D_SendCommand(0x04);
     EPD_2IN9D_ReadBusy();
 
-    EPD_2IN9D_SendCommand(0x00);	//panel setting
-    EPD_2IN9D_SendData(0xbf);     //LUT from OTP，128x296
+    EPD_2IN9D_SendCommand(0x00); //panel setting
+    EPD_2IN9D_SendData(0xbf); //LUT from OTP，128x296
 
-    EPD_2IN9D_SendCommand(0x30);	//PLL setting
-    EPD_2IN9D_SendData(0x3C);     // 3a 100HZ   29 150Hz 39 200HZ	31 171HZ
+    EPD_2IN9D_SendCommand(0x30); //PLL setting
+    EPD_2IN9D_SendData(0x3C); // 3a 100HZ   29 150Hz 39 200HZ 31 171HZ
 
-    EPD_2IN9D_SendCommand(0x61);	//resolution setting
+    EPD_2IN9D_SendCommand(0x61); //resolution setting
     EPD_2IN9D_SendData(EPD_2IN9D_WIDTH);
     EPD_2IN9D_SendData((EPD_2IN9D_HEIGHT >> 8) & 0xff);
     EPD_2IN9D_SendData(EPD_2IN9D_HEIGHT & 0xff);
 
-    EPD_2IN9D_SendCommand(0x82);	//vcom_DC setting
+    EPD_2IN9D_SendCommand(0x82); //vcom_DC setting
     EPD_2IN9D_SendData(0x12);
 
     EPD_2IN9D_SendCommand(0X50);
@@ -214,35 +214,30 @@ void EPD_2IN9D_SetPartReg(void)
 }
 
 /******************************************************************************
-function :	Turn On Display
+function : Turn On Display
 parameter:
 ******************************************************************************/
 void EPD_2IN9D_Refresh(void)
 {
-    EPD_2IN9D_SendCommand(0x12);		 //DISPLAY REFRESH
-    DEV_Delay_ms(1);     //!!!The delay here is necessary, 200uS at least!!!
+    EPD_2IN9D_SendCommand(0x12); //DISPLAY REFRESH
+    DEV_Delay_ms(1); //!!!The delay here is necessary, 200uS at least!!!
 
     EPD_2IN9D_ReadBusy();
 }
 
 /******************************************************************************
-function :	Initialize the e-Paper register
+function : Initialize the e-Paper register
 parameter:
 ******************************************************************************/
 void EPD_2IN9D_Init(void)
 {
     if (_display_asleep) { EPD_2IN9D_Reset(); }
-    EPD_2IN9D_SendCommand(0x00);			//panel setting
-    EPD_2IN9D_SendData(0x1f);		//LUT from OTP，KW-BF   KWR-AF	BWROTP 0f	BWOTP 1f
+    EPD_2IN9D_SendCommand(0x00); //panel setting
+    EPD_2IN9D_SendData(0x1f);    //LUT from OTP，KW-BF KWR-AF BWROTP 0f BWOTP 1f
 
-//     EPD_2IN9D_SendCommand(0x61);			//resolution setting
-//     EPD_2IN9D_SendData (0x80);        	 
-//     EPD_2IN9D_SendData (0x01);		
-//     EPD_2IN9D_SendData (0x28);	
+    EPD_2IN9D_SendCommand(0X50); //VCOM AND DATA INTERVAL SETTING
+    EPD_2IN9D_SendData(0x97); //WBmode:VBDF 17|D7 VBDW 97 VBDB 57 WBRmode:VBDF F7 VBDW 77 VBDB 37  VBDR B7
 
-    EPD_2IN9D_SendCommand(0X50);			//VCOM AND DATA INTERVAL SETTING			
-    EPD_2IN9D_SendData(0x97);		//WBmode:VBDF 17|D7 VBDW 97 VBDB 57		WBRmode:VBDF F7 VBDW 77 VBDB 37  VBDR B7
-    
     EPD_2IN9D_SendCommand(0x04);
     EPD_2IN9D_ReadBusy();
 }
@@ -255,31 +250,31 @@ void EPD_2IN9D_SendRepeatedBytePattern(uint8_t byte_pattern, uint16_t how_many) 
 }
 
 void EPD_2IN9D_SendPartialAddr(uint16_t x, uint16_t y, uint16_t w, uint16_t h) {
-    EPD_2IN9D_SendCommand(0x90);		//resolution setting
-    EPD_2IN9D_SendData(x);           //x-start
-    EPD_2IN9D_SendData(x+w - 1);       //x-end
+    EPD_2IN9D_SendCommand(0x90); //resolution setting
+    EPD_2IN9D_SendData(x); //x-start
+    EPD_2IN9D_SendData(x+w - 1); //x-end
 
     EPD_2IN9D_SendData(0);
-    EPD_2IN9D_SendData(y);     //y-start
+    EPD_2IN9D_SendData(y); //y-start
     EPD_2IN9D_SendData((y+h) / 256);
-    EPD_2IN9D_SendData((y+h) % 256 - 1);  //y-end
+    EPD_2IN9D_SendData((y+h) % 256 - 1); //y-end
     EPD_2IN9D_SendData(0x01);
 }
 
 void EPD_2IN9D_SendPartialLineAddr(uint8_t line) {
-    EPD_2IN9D_SendCommand(0x90);		//resolution setting
-    EPD_2IN9D_SendData(line*16);           //x-start
-    EPD_2IN9D_SendData((line*16)+16 - 1);       //x-end
+    EPD_2IN9D_SendCommand(0x90); //resolution setting
+    EPD_2IN9D_SendData(line*16); //x-start
+    EPD_2IN9D_SendData((line*16)+16 - 1); //x-end
 
     EPD_2IN9D_SendData(0);
-    EPD_2IN9D_SendData(0);     //y-start
+    EPD_2IN9D_SendData(0); //y-start
     EPD_2IN9D_SendData(296 / 256);
-    EPD_2IN9D_SendData(296 % 256 - 1);  //y-end
+    EPD_2IN9D_SendData(296 % 256 - 1); //y-end
     EPD_2IN9D_SendData(0x01);
 }
 
 /******************************************************************************
-function :	Clear screen
+function : Clear screen
 parameter:
 ******************************************************************************/
 void EPD_2IN9D_Clear(void)
@@ -301,7 +296,7 @@ void EPD_2IN9D_Clear(void)
 }
 
 /******************************************************************************
-function :	Sends the image buffer in RAM to e-Paper and displays
+function : Sends the image buffer in RAM to e-Paper and displays
 parameter:
 ******************************************************************************/
 void EPD_2IN9D_Display(uint8_t *Image)
@@ -319,33 +314,33 @@ void EPD_2IN9D_Display(uint8_t *Image)
 }
 
 /******************************************************************************
-function :	Sends the image buffer in RAM to e-Paper and displays
+function : Sends the image buffer in RAM to e-Paper and displays
 parameter:
 ******************************************************************************/
 void EPD_2IN9D_DisplayPart(uint8_t *Image)
 {
     /* Set partial Windows */
     EPD_2IN9D_SetPartReg();
-    EPD_2IN9D_SendCommand(0x91);		//This command makes the display enter partial mode
+    EPD_2IN9D_SendCommand(0x91); //This command makes the display enter partial mode
     EPD_2IN9D_SendPartialAddr(0, 0, EPD_2IN9D_WIDTH, EPD_2IN9D_HEIGHT);
     EPD_2IN9D_Display(Image);
 }
 
 void EPD_2in9D_PartialClear(void) {
-    EPD_2IN9D_SendCommand(0x91);		//This command makes the display enter partial mode
-    EPD_2IN9D_SendCommand(0x90);		//resolution setting
-    EPD_2IN9D_SendData(0);           //x-start
-    EPD_2IN9D_SendData(EPD_2IN9D_WIDTH - 1);       //x-end
+    EPD_2IN9D_SendCommand(0x91); //This command makes the display enter partial mode
+    EPD_2IN9D_SendCommand(0x90); //resolution setting
+    EPD_2IN9D_SendData(0); //x-start
+    EPD_2IN9D_SendData(EPD_2IN9D_WIDTH - 1); //x-end
 
     EPD_2IN9D_SendData(0);
-    EPD_2IN9D_SendData(0);     //y-start
+    EPD_2IN9D_SendData(0); //y-start
     EPD_2IN9D_SendData(EPD_2IN9D_HEIGHT / 256);
-    EPD_2IN9D_SendData(EPD_2IN9D_HEIGHT % 256 - 1);  //y-end
+    EPD_2IN9D_SendData(EPD_2IN9D_HEIGHT % 256 - 1); //y-end
     EPD_2IN9D_SendData(0x01);
 
     uint16_t Width;
     Width = (EPD_2IN9D_WIDTH % 8 == 0)? (EPD_2IN9D_WIDTH / 8 ): (EPD_2IN9D_WIDTH / 8 + 1);
-    
+
     /* send data */
     EPD_2IN9D_SendCommand(0x13);
     for (uint16_t j = 0; j < EPD_2IN9D_HEIGHT; j++) {
@@ -382,7 +377,7 @@ void epaper_ShowFullFrame(const char *frame) {
 void epaper_init(void) {
     _display_asleep = true;
     LOG_INF("Setup ePaper pins");
-  	DEV_Module_Init();
+    DEV_Module_Init();
 
     LOG_INF("ePaper Init and Clear");
     EPD_2IN9D_Init();
@@ -393,16 +388,29 @@ void epaper_init(void) {
 }
 
 /******************************************************************************
-function :	Enter sleep mode
+function :        Enter power off mode
+parameter:
+******************************************************************************/
+void EPD_2IN9D_PowerOff(void)
+{
+    EPD_2IN9D_SendCommand(0X50);
+    EPD_2IN9D_SendData(0xf7);
+    EPD_2IN9D_SendCommand(0X02); //power off
+    EPD_2IN9D_ReadBusy();
+    _display_asleep = true;
+}
+
+/******************************************************************************
+function :        Enter deep sleep mode
 parameter:
 ******************************************************************************/
 void EPD_2IN9D_Sleep(void)
 {
     EPD_2IN9D_SendCommand(0X50);
     EPD_2IN9D_SendData(0xf7);
-    EPD_2IN9D_SendCommand(0X02);  	//power off
+    EPD_2IN9D_SendCommand(0X02); //power off
     EPD_2IN9D_ReadBusy();
-    EPD_2IN9D_SendCommand(0X07);  	//deep sleep
+    EPD_2IN9D_SendCommand(0X07); //deep sleep
     EPD_2IN9D_SendData(0xA5);
     _display_asleep = true;
 }
@@ -643,7 +651,7 @@ void epaper_WriteDoubleLine(uint8_t *str, uint8_t str_len, uint8_t line)
     line %= 8;  /* Bounding */
 
     EPD_2IN9D_SendCommand(0x91);
-    EPD_2IN9D_SendPartialLineAddr(line); 
+    EPD_2IN9D_SendPartialLineAddr(line);
     EPD_2IN9D_SendCommand(0x13);
     epaper_SendDoubleTextLine(str, str_len, false);
     EPD_2IN9D_SendCommand(0x92);
@@ -652,7 +660,7 @@ void epaper_WriteDoubleLine(uint8_t *str, uint8_t str_len, uint8_t line)
     EPD_2IN9D_Refresh();
 
     EPD_2IN9D_SendCommand(0x91);
-    EPD_2IN9D_SendPartialLineAddr(line);    
+    EPD_2IN9D_SendPartialLineAddr(line);
     EPD_2IN9D_SendCommand(0x13);
     epaper_SendDoubleTextLine(str, str_len, false);
     EPD_2IN9D_SendCommand(0x92);
