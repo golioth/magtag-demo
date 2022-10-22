@@ -35,6 +35,7 @@ void epaper_FullClear(void);
 void epaper_ShowFullFrame(const char *frame);
 void epaper_init(void);
 void EPD_2IN9D_Sleep(void);
+void EPD_2IN9D_PowerOff(void);
 
 uint8_t flip_invert(uint8_t column);
 void double_flip_invert(uint8_t orig_column, uint8_t return_cols[2]);
