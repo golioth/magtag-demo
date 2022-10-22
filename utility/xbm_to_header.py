@@ -70,8 +70,8 @@ def reverse_endian_array(arr):
     for n in arr:
         rend_arr.append(flip_endian(n))
     return rend_arr
-        
-def write_headerfile(pixel_array, outfile_name):
+
+def write_headerfile(pixel_array, outfile_name, arr_name='magtag_image'):
     '''
     Takes an array of bytes representing a 128x296 image
     and write it as an c header array
@@ -80,7 +80,7 @@ def write_headerfile(pixel_array, outfile_name):
     with open(outfile_name, "w") as f:
         hex_str = "0x{:02X}, "
         counter = 0
-        outstring = 'const unsigned char magtag_image[] = {'
+        outstring = 'const unsigned char {}[] = {}'.format(arr_name,'{')
         for i in pixel_array:
             if counter%16 == 0:
                 f.write(outstring)
@@ -94,9 +94,10 @@ def rotate_invert_flipendian(xbm_filename):
     arr = rotate_ccw(xbm_filename)
     arr = invert_array(arr)
     arr = reverse_endian_array(arr)
-    headerfile = os.path.join(os.getcwd(),Path(xbm_filename).stem + '.h')
+    filename_stub=Path(xbm_filename).stem
+    headerfile = os.path.join(os.getcwd(),filename_stub + '.h')
     print("Generating: " + headerfile)
-    write_headerfile(arr, headerfile)
+    write_headerfile(arr, headerfile, filename_stub)
 
 def main(argv):
     if len(sys.argv) != 2:
