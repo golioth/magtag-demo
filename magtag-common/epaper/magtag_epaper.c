@@ -359,14 +359,19 @@ void EPD_2in9D_PartialClear(void) {
 void epaper_FullClear(void) {
     EPD_2IN9D_Init();
     EPD_2IN9D_Clear();
-    EPD_2IN9D_Sleep();
+    EPD_2IN9D_PowerOff();
 }
 
 void epaper_ShowFullFrame(const char *frame) {
-    EPD_2IN9D_Display(frame);
+    if (_display_asleep) {
+        EPD_2IN9D_Init();
+        EPD_2IN9D_SetPartReg();
+    }
+    EPD_2IN9D_Display((char *)frame);
     EPD_2IN9D_Refresh();
-    EPD_2IN9D_Display(frame);
+    EPD_2IN9D_Display((char *)frame);
     EPD_2IN9D_SetPartReg();
+    EPD_2IN9D_PowerOff();
 }
 
 /**
@@ -678,15 +683,17 @@ void epaper_WriteDoubleLine(uint8_t *str, uint8_t str_len, uint8_t line)
 void epaper_autowrite(uint8_t *str, uint8_t str_len)
 {
     static int8_t line = 0;
+    EPD_2IN9D_Init();
     if (line > 0) {
         if ((line%AUTOWRITE_REFRESH_AFTER_N_LINES == 0) || EPD_2IN9D_IsAsleep()) {
-            EPD_2IN9D_Init();
             EPD_2IN9D_Clear();
-            EPD_2IN9D_SetPartReg();
         }
     }
+    EPD_2IN9D_SetPartReg();
     epaper_WriteLargeLine(str, str_len, line);
     ++line;
+
+    EPD_2IN9D_PowerOff();
 }
 
 
