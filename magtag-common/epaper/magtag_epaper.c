@@ -632,6 +632,29 @@ void epaper_WriteLargeLine(uint8_t *str, uint8_t str_len, uint8_t line)
     EPD_2IN9D_SendCommand(0x92);
 }
 
+void epaper_WriteLargeLetter(uint8_t letter, uint16_t x, uint8_t line)
+{
+    /* Bounding */
+    line %= 16;
+    if (line==15) return; /* Need 2 lines for this write operation */
+    if (x>=(296-10)) return; /* Need 10 columns for this write operation */
+
+    EPD_2IN9D_SendCommand(0x91);
+    EPD_2IN9D_SendPartialAddr(line*8, x, 16, 16);
+    EPD_2IN9D_SendCommand(0x13);
+    epaper_SendLetter(letter, u_mono_bold_10x16, FONT_CHAR_S);
+    EPD_2IN9D_SendCommand(0x92);
+
+    /* Refresh display, then write data again to prewind the "last-frame" */
+    EPD_2IN9D_Refresh();
+
+    EPD_2IN9D_SendCommand(0x91);
+    EPD_2IN9D_SendPartialAddr(line*8, x, 16, 16);
+    EPD_2IN9D_SendCommand(0x13);
+    epaper_SendLetter(letter, u_mono_bold_10x16, FONT_CHAR_S);
+    EPD_2IN9D_SendCommand(0x92);
+}
+
 /**
  * @brief Use partial refresh to show string on one line of the display
  *
