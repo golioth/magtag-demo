@@ -29,14 +29,21 @@
 
 #include "magtag-common/magtag_epaper.h"
 #include "magtag_epaper_hal.h"
-#include "font5x8.h"
-#include "ubuntu_monospaced_bold_10x16.h"
-#include "ubuntu_monospaced_bold_19x32.h"
 #include "GoliothLogo.h"
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(golioth_epaper, LOG_LEVEL_DBG);
 
 bool _display_asleep = true;
+
+/*
+ * Fonts
+ */
+#include "font5x8.h"
+#include "ubuntu_monospaced_bold_10x16.h"
+#include "ubuntu_monospaced_bold_19x32.h"
+
+struct font_meta font_10x16 = { u_mono_bold_10x16, 10, 2 };
+struct font_meta font_19x32 = { u_mono_bold_19x32, 19, 4 };
 
 /**
  * partial screen update LUT
@@ -593,6 +600,30 @@ void epaper_SendLetter(uint8_t letter, const char *font_p, uint8_t bytes_in_lett
     }
 }
 
+/**
+ * @brief Write one character from font file to ePaper display
+ *
+ * @param letter    The letter to write to the display
+ * @param font_p    Pointer to the font array
+ * @param bytes_in_letter    Total bytes neede from the font file for this
+ *                                 letter
+ */
+void epaper_SendLetterNew(uint8_t letter, struct font_meta *font_m)
+{
+    /* Write space if letter is out of bounds */
+    if ((letter < ' ') || (letter> '~')) { letter = ' '; }
+
+    /* ASCII space=32 but font file begins at 0 */
+    letter -= ASCII_OFFSET;
+
+    uint8_t bytes_in_letter = font_m->letter_width_bits * font_m->letter_height_bytes;
+
+    for (uint16_t i=0; i<bytes_in_letter; i++) {
+        uint8_t letter_column = *(font_m->font_p + (letter*bytes_in_letter) + i);
+        EPD_2IN9D_SendData(~letter_column);
+    }
+}
+
 void epaper_SendLargeTextLine(uint8_t *str, uint8_t str_len, uint8_t line, int8_t show_n_chars)
 {
     /* Bounding */
@@ -626,6 +657,87 @@ void epaper_SendLargeTextLine(uint8_t *str, uint8_t str_len, uint8_t line, int8_
     if (show_n_chars < 0) {
         for (uint8_t i=0; i<6; i++) EPD_2IN9D_SendData(0xff); //Unused columns
     }
+}
+
+void epaper_SendString(uint8_t *str, uint8_t str_len, uint8_t line, int8_t show_n_chars, struct font_meta *font_m)
+{
+    uint8_t letter;
+    uint8_t letter_column;
+    uint8_t char_count;
+    uint8_t line_space_front = 0;
+    uint8_t line_space_back = 0;
+
+    if (show_n_chars < 0) {
+        char_count = EPD_2IN9D_HEIGHT/font_m->letter_width_bits;
+        line_space_front = (EPD_2IN9D_HEIGHT - char_count)/2;
+        line_space_back = EPD_2IN9D_HEIGHT - char_count - line_space_front;
+        //Unused columns
+        for (uint8_t i=0; i<line_space_front; i++) EPD_2IN9D_SendData(0xff);
+    }
+    else {
+        char_count = show_n_chars;
+    }
+
+    for (uint8_t j=1; j<=char_count; j++) {
+        if (char_count-j >= str_len) {
+            /* String too short, send a space */
+            letter = ' ';
+        }
+        else {
+            letter = str[char_count-j];
+        }
+
+        epaper_SendLetterNew(letter, font_m);
+    }
+
+    if (show_n_chars < 0) {
+        //Unused columns
+        for (uint8_t i=0; i<line_space_back; i++) EPD_2IN9D_SendData(0xff);
+    }
+}
+
+void epaper_WriteString(uint8_t *str,
+                        uint8_t str_len,
+                        uint8_t line,
+                        int16_t x_left,
+                        struct font_meta *font_m)
+{
+    LOG_DBG("font_pointers %p, %p", &font_10x16, &font_19x32);
+    LOG_DBG("font_meta %p, %d, %d", font_m->font_p, font_m->letter_width_bits, font_m->letter_height_bytes);
+    /* Bounding */
+    line %= EPD_2IN9D_PAGECNT;
+    if (line > (EPD_2IN9D_PAGECNT - font_m->letter_height_bytes)) { return; }
+    if (x_left < font_m->letter_width_bits) { return; }
+
+    uint8_t char_limit;
+    if (str_len*font_m->letter_width_bits > x_left) {
+        char_limit = x_left/font_m->letter_width_bits;
+    }
+    else {
+        char_limit = str_len;
+    }
+    uint16_t col_width = char_limit*font_m->letter_width_bits;
+
+    EPD_2IN9D_SendCommand(0x91);
+    EPD_2IN9D_SendPartialAddr(line*8,
+                              x_left-col_width,
+                              font_m->letter_height_bytes * 8,
+                              col_width);
+    EPD_2IN9D_SendCommand(0x13);
+    epaper_SendString(str, str_len, line, char_limit, font_m);
+    EPD_2IN9D_SendCommand(0x92);
+
+    /* Refresh display, then write data again to prewind the "last-frame" */
+    EPD_2IN9D_Refresh();
+
+    EPD_2IN9D_SendCommand(0x91);
+    EPD_2IN9D_SendPartialAddr(line*8,
+                              x_left-col_width,
+                              font_m->letter_height_bytes * 8,
+                              col_width);
+    EPD_2IN9D_SendCommand(0x13);
+    epaper_SendString(str, str_len, line, char_limit, font_m);
+    EPD_2IN9D_SendCommand(0x92);
 }
 
 void epaper_WriteLargeString(uint8_t *str, uint8_t str_len, uint8_t line, int16_t x_left)
