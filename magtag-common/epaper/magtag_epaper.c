@@ -38,11 +38,11 @@ bool _display_asleep = true;
 /*
  * Fonts
  */
-#include "font5x8.h"
+#include "font6x8.h"
 #include "ubuntu_monospaced_bold_10x16.h"
 #include "ubuntu_monospaced_bold_19x32.h"
 
-struct font_meta font_5x8 = { font5x8, 5, 1 };
+struct font_meta font_6x8 = { font6x8, 6, 1 };
 struct font_meta font_10x16 = { u_mono_bold_10x16, 10, 2 };
 struct font_meta font_19x32 = { u_mono_bold_19x32, 19, 4 };
 
@@ -470,7 +470,7 @@ void epaper_SendDoubleTextLine(uint8_t *str, uint8_t str_len, bool full)
     for (uint8_t i=0; i<vamp_count; i++) EPD_2IN9D_SendData(0xff); //Unused columns
     for (uint16_t j = 0; j < 144; j++) {
         for (uint16_t i = 0; i < 1; i++) {
-            if (column == 0 || str_idx >= str_len)
+            if (str_idx >= str_len)
             {
                 send_col[0] = 0xff;
                 send_col[1] = 0xff;
@@ -486,8 +486,7 @@ void epaper_SendDoubleTextLine(uint8_t *str, uint8_t str_len, bool full)
                 {
                     letter = str[str_idx] - 32;
                 }
-                /* Artifically adding a space so decrement the index */
-                uint8_t letter_column = font5x8[(5*letter)+column-1];
+                uint8_t letter_column = font6x8[(6*letter)+column];
                 double_invert(letter_column, send_col);
             }
 
@@ -501,7 +500,6 @@ void epaper_SendDoubleTextLine(uint8_t *str, uint8_t str_len, bool full)
                 }
             }
 
-            /* Artifically adding a space, so loop 6 times, not 5 */
             if (++column > 5)
             {
                 column = 0;
@@ -672,7 +670,7 @@ void epaper_Write(uint8_t *str, uint8_t str_len, uint8_t line, int16_t x_left, u
     struct font_meta *font_m;
     switch(font_size_in_lines) {
         case 1:
-            font_m = &font_5x8;
+            font_m = &font_6x8;
             break;
         case 2:
             font_m = &font_10x16;
@@ -703,7 +701,7 @@ void epaper_Write(uint8_t *str, uint8_t str_len, uint8_t line, int16_t x_left, u
  */
 void epaper_WriteLine(uint8_t *str, uint8_t str_len, uint8_t line)
 {
-    epaper_WriteString(str, str_len, line, -1, &font_5x8);
+    epaper_WriteString(str, str_len, line, -1, &font_6x8);
 }
 
 void epaper_WriteLargeLine(uint8_t *str, uint8_t str_len, uint8_t line) {
