@@ -15,6 +15,7 @@
 #define EPD_2IN9D_HEIGHT  296
 #define EPD_2IN9D_PAGECNT EPD_2IN9D_WIDTH/8
 
+#define ASCII_OFFSET    32  // Font start with space (char 32)
 #define AUTOWRITE_REFRESH_AFTER_N_LINES	  16
 
 /*
@@ -49,10 +50,10 @@ void EPD_2IN9D_PowerOff(void);
 
 void double_invert(uint8_t orig_column, uint8_t return_cols[2]);
 void epaper_SendDoubleTextLine(uint8_t *str, uint8_t str_len, bool full);
-void epaper_SendLetter(uint8_t letter, struct font_meta *font_m);
+void epaper_LetterToRam(uint8_t letter, struct font_meta *font_m);
 void epaper_WriteLine(uint8_t *str, uint8_t str_len, uint8_t line);
 void epaper_WriteDoubleLine(uint8_t *str, uint8_t str_len, uint8_t line);
-void epaper_SendString(uint8_t *str, uint8_t str_len, uint8_t line, int8_t show_n_chars, struct font_meta *font_m);
+void epaper_StringToRam(uint8_t *str, uint8_t str_len, uint8_t line, int8_t show_n_chars, struct font_meta *font_m);
 void epaper_WriteString(uint8_t *str, uint8_t str_len, uint8_t line, int16_t x_left, struct font_meta *font_m);
 void epaper_WriteLargeString(uint8_t *str, uint8_t str_len, uint8_t line, int16_t x_left);
 void epaper_WriteLargeLine(uint8_t *str, uint8_t str_len, uint8_t line);

@@ -512,20 +512,15 @@ void epaper_SendDoubleTextLine(uint8_t *str, uint8_t str_len, bool full)
     for (uint8_t i=0; i<vamp_count; i++) EPD_2IN9D_SendData(0xff); //Unused columns
 }
 
-#define CHARS_PER_LINE  28  // 296/20 = 28 (remainder of 6)
-#define REMAINDER_PAD   6   // Used to pad ends of lines
-#define ASCII_OFFSET    32  // Font start with space (char 32)
-#define FONT_CHAR_S     20  // 2 bytes per column, 10 columns
-
 /**
- * @brief Write one character from font file to ePaper display
+ * @brief Write one character from font file ePaper display RAM
  *
  * @param letter    The letter to write to the display
  * @param font_p    Pointer to the font array
  * @param bytes_in_letter    Total bytes neede from the font file for this
  *                                 letter
  */
-void epaper_SendLetter(uint8_t letter, struct font_meta *font_m)
+void epaper_LetterToRam(uint8_t letter, struct font_meta *font_m)
 {
     /* Write space if letter is out of bounds */
     if ((letter < ' ') || (letter> '~')) { letter = ' '; }
@@ -541,7 +536,7 @@ void epaper_SendLetter(uint8_t letter, struct font_meta *font_m)
     }
 }
 
-void epaper_SendString(uint8_t *str, uint8_t str_len, uint8_t line, int8_t show_n_chars, struct font_meta *font_m)
+void epaper_StringToRam(uint8_t *str, uint8_t str_len, uint8_t line, int8_t show_n_chars, struct font_meta *font_m)
 {
     uint8_t letter;
     uint8_t letter_column;
@@ -574,7 +569,7 @@ void epaper_SendString(uint8_t *str, uint8_t str_len, uint8_t line, int8_t show_
             letter = str[char_count-j];
         }
 
-        epaper_SendLetter(letter, font_m);
+        epaper_LetterToRam(letter, font_m);
     }
 
     if (show_n_chars < 0) {
@@ -583,6 +578,25 @@ void epaper_SendString(uint8_t *str, uint8_t str_len, uint8_t line, int8_t show_
     }
 }
 
+/**
+ * @brief Write a string to ePaper display
+ *
+ * Strings will be truncated to fit in avaialble display space. Strings are
+ * place on the screen by selecting one a line number (lines are 8-bits tall)
+ * as y value and the pixel location as an x value with the left column begging
+ * with 295 and decrementing as you move to the right. Specify the entire row
+ * by passing a negative x_left value.
+ *
+ * This function can be used for any size of font. A font_meta struct is passed
+ * that includes a pointer to the monospace font array, and the height and width
+ * of a single character.
+ *
+ * @param *str  Pointer to the string to be written
+ * @param str_len  Length of the string to be written
+ * @param line  Line on display; 0=top 15=bottom
+ * @param x_left  Pixel position to begin; 295=left 0=right
+ * @param *font_m  Pointer to a font_meta struct describing the font array
+ */
 void epaper_WriteString(uint8_t *str,
                         uint8_t str_len,
                         uint8_t line,
@@ -627,7 +641,7 @@ void epaper_WriteString(uint8_t *str,
                                   pixel_height,
                                   col_width);
         EPD_2IN9D_SendCommand(0x13);
-        epaper_SendString(str, str_len, line, char_limit, font_m);
+        epaper_StringToRam(str, str_len, line, char_limit, font_m);
         EPD_2IN9D_SendCommand(0x92);
 
         if (i==0) {
