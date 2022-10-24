@@ -578,7 +578,7 @@ void epaper_SendDoubleTextLine(uint8_t *str, uint8_t str_len, bool full)
  * @param bytes_in_letter    Total bytes neede from the font file for this
  *                                 letter
  */
-void epaper_SendLetter(uint8_t letter, char *font_p, uint8_t bytes_in_letter)
+void epaper_SendLetter(uint8_t letter, const char *font_p, uint8_t bytes_in_letter)
 {
     /* Write space if letter is out of bounds */
     if ((letter < ' ') || (letter> '~')) { letter = ' '; }
@@ -592,24 +592,69 @@ void epaper_SendLetter(uint8_t letter, char *font_p, uint8_t bytes_in_letter)
     }
 }
 
-void epaper_SendLargeTextLine(uint8_t *str, uint8_t str_len)
+void epaper_SendLargeTextLine(uint8_t *str, uint8_t str_len, uint8_t line, int8_t show_n_chars)
 {
+    /* Bounding */
+    line %= 8;
 
     uint8_t letter;
     uint8_t letter_column;
-    for (uint8_t i=0; i<6; i++) EPD_2IN9D_SendData(0xff); //Unused columns
-    for (uint8_t j=0; j<=CHARS_PER_LINE; j++) {
-        if (j <= CHARS_PER_LINE-str_len) {
+    uint8_t char_count;
+
+    if (show_n_chars < 0) {
+        char_count = CHARS_PER_LINE;
+        for (uint8_t i=0; i<6; i++) EPD_2IN9D_SendData(0xff); //Unused columns
+    }
+    else {
+        char_count = show_n_chars;
+    }
+
+    for (uint8_t j=1; j<=char_count; j++) {
+        if (show_n_chars > 0) LOG_DBG("j=%d %c",j,str[char_count-j]);
+        if (char_count-j >= str_len) {
             /* String too short, send a space */
             letter = ' ';
         }
         else {
-            letter = str[CHARS_PER_LINE-j];
+            letter = str[char_count-j];
         }
 
         epaper_SendLetter(letter , u_mono_bold_10x16, FONT_CHAR_S);
     }
-    for (uint8_t i=0; i<6; i++) EPD_2IN9D_SendData(0xff); //Unused columns
+
+    if (show_n_chars < 0) {
+        for (uint8_t i=0; i<6; i++) EPD_2IN9D_SendData(0xff); //Unused columns
+    }
+}
+
+void epaper_WriteLargeString(uint8_t *str, uint8_t str_len, uint8_t line, int16_t x_left)
+{
+    line %= 8;  /* Bounding */
+    if (x_left < 10) { return; }
+
+    uint8_t char_limit;
+    if (str_len*10 > x_left) {
+        char_limit = x_left/10;
+    }
+    else {
+        char_limit = str_len;
+    }
+    uint16_t col_width = char_limit*10;
+
+    EPD_2IN9D_SendCommand(0x91);
+    EPD_2IN9D_SendPartialAddr(line*8, x_left-col_width, 16, col_width);
+    EPD_2IN9D_SendCommand(0x13);
+    epaper_SendLargeTextLine(str, str_len, line, char_limit);
+    EPD_2IN9D_SendCommand(0x92);
+
+    /* Refresh display, then write data again to prewind the "last-frame" */
+    EPD_2IN9D_Refresh();
+
+    EPD_2IN9D_SendCommand(0x91);
+    EPD_2IN9D_SendPartialAddr(line*8, x_left-col_width, 16, col_width);
+    EPD_2IN9D_SendCommand(0x13);
+    epaper_SendLargeTextLine(str, str_len, line, char_limit);
+    EPD_2IN9D_SendCommand(0x92);
 }
 
 void epaper_WriteLargeLine(uint8_t *str, uint8_t str_len, uint8_t line)
@@ -619,7 +664,7 @@ void epaper_WriteLargeLine(uint8_t *str, uint8_t str_len, uint8_t line)
     EPD_2IN9D_SendCommand(0x91);
     EPD_2IN9D_SendPartialLineAddr(line);
     EPD_2IN9D_SendCommand(0x13);
-    epaper_SendLargeTextLine(str, str_len);
+    epaper_SendLargeTextLine(str, str_len, line, -1);
     EPD_2IN9D_SendCommand(0x92);
 
     /* Refresh display, then write data again to prewind the "last-frame" */
@@ -628,7 +673,7 @@ void epaper_WriteLargeLine(uint8_t *str, uint8_t str_len, uint8_t line)
     EPD_2IN9D_SendCommand(0x91);
     EPD_2IN9D_SendPartialLineAddr(line);
     EPD_2IN9D_SendCommand(0x13);
-    epaper_SendLargeTextLine(str, str_len);
+    epaper_SendLargeTextLine(str, str_len, line, -1);
     EPD_2IN9D_SendCommand(0x92);
 }
 
