@@ -31,6 +31,7 @@
 #include "magtag_epaper_hal.h"
 #include "font5x8.h"
 #include "ubuntu_monospaced_bold_10x16.h"
+#include "ubuntu_monospaced_bold_19x32.h"
 #include "GoliothLogo.h"
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(golioth_epaper, LOG_LEVEL_DBG);
@@ -700,6 +701,28 @@ void epaper_WriteLargeLetter(uint8_t letter, uint16_t x, uint8_t line)
     EPD_2IN9D_SendCommand(0x92);
 }
 
+void epaper_WriteVeryLargeLetter(uint8_t letter, uint16_t x, uint8_t line)
+{
+    /* Bounding */
+    line %= 16;
+    if (line>12) return; /* Need 4 lines for this write operation */
+    if (x>=(296-19)) return; /* Need 19 columns for this write operation */
+
+    EPD_2IN9D_SendCommand(0x91);
+    EPD_2IN9D_SendPartialAddr(line*8, x, 32, 19);
+    EPD_2IN9D_SendCommand(0x13);
+    epaper_SendLetter(letter, u_mono_bold_19x32, 4*19);
+    EPD_2IN9D_SendCommand(0x92);
+
+    /* Refresh display, then write data again to prewind the "last-frame" */
+    EPD_2IN9D_Refresh();
+
+    EPD_2IN9D_SendCommand(0x91);
+    EPD_2IN9D_SendPartialAddr(line*8, x, 32, 19);
+    EPD_2IN9D_SendCommand(0x13);
+    epaper_SendLetter(letter, u_mono_bold_19x32, 4*19);
+    EPD_2IN9D_SendCommand(0x92);
+}
 /**
  * @brief Use partial refresh to show string on one line of the display
  *
