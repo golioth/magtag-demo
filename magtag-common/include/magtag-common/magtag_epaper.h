@@ -44,8 +44,10 @@ void epaper_SendDoubleTextLine(uint8_t *str, uint8_t str_len, bool full);
 void epaper_SendLetter(uint8_t letter, const char *font_p, uint8_t bytes_in_letter);
 void epaper_WriteLine(uint8_t *str, uint8_t str_len, uint8_t line);
 void epaper_WriteDoubleLine(uint8_t *str, uint8_t str_len, uint8_t line);
+void epaper_WriteLargeString(uint8_t *str, uint8_t str_len, uint8_t line, int16_t x_left);
 void epaper_WriteLargeLine(uint8_t *str, uint8_t str_len, uint8_t line);
 void epaper_WriteLargeLetter(uint8_t letter, uint16_t x, uint8_t line);
+void epaper_WriteVeryLargeLetter(uint8_t letter, uint16_t x, uint8_t line);
 void epaper_autowrite(uint8_t *str, uint8_t str_len);
 
 #endif
