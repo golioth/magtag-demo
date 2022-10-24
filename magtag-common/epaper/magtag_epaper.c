@@ -42,6 +42,7 @@ bool _display_asleep = true;
 #include "ubuntu_monospaced_bold_10x16.h"
 #include "ubuntu_monospaced_bold_19x32.h"
 
+struct font_meta font_5x8 = { font5x8, 5, 1 };
 struct font_meta font_10x16 = { u_mono_bold_10x16, 10, 2 };
 struct font_meta font_19x32 = { u_mono_bold_19x32, 19, 4 };
 
@@ -429,33 +430,14 @@ void EPD_2IN9D_Sleep(void)
 }
 
 /**
- * @brief Flip endianness of input and invert the value to match the needs of
- * the display
  *
- * @param column    Font column input
- * @return uint8_t  Flipped and inverted column
- */
-uint8_t flip_invert(uint8_t column) {
-    // Flip endianness and invert
-    uint8_t ret_column = 0;
-    for (uint8_t i=0; i<8; i++)
-    {
-        if (~column & (1<<i))
-        {
-            ret_column |= (1<<(7-i));
-        }
-    }
-    return ret_column;
-}
-
-/**
- * @brief Flip endianness of input, double each pixel to enlarge the font, and
- * invert the value to match the needs of the display
+ * @brief Double each pixel to enlarge the font, and invert the value to match
+ * the needs of the display
  *
  * @param orig_column   Font column input
  * @param return_cols   Two-byte array to store the results
  */
-void double_flip_invert(uint8_t orig_column, uint8_t return_cols[2]) {
+void double_invert(uint8_t orig_column, uint8_t return_cols[2]) {
     // Double the pixesl, the flip endianness and invert
     uint8_t upper_column = 0;
     uint8_t lower_column = 0;
@@ -464,53 +446,8 @@ void double_flip_invert(uint8_t orig_column, uint8_t return_cols[2]) {
         if (orig_column & (1<<(i+4))) upper_column |= 0b11 << (i*2);
         if (orig_column & (1<<(i))) lower_column |= 0b11 << (i*2);
     }
-    return_cols[0] = flip_invert(upper_column);
-    return_cols[1] = flip_invert(lower_column);
-}
-
-/**
- * @brief Write data for showing text on display
- *
- * This is meant to be used with partial writes.
- *
- * @param str       String to display
- * @param str_len   Length of string
- */
-void epaper_SendTextLine(uint8_t *str, uint8_t str_len)
-{
-    uint8_t send_col;
-    uint8_t letter;
-    uint8_t column = 0;
-    uint8_t str_idx = 48;
-    EPD_2IN9D_SendData(0xff); //Unused column
-    for (uint16_t j = 0; j < 294; j++) {
-        for (uint16_t i = 0; i < 1; i++) {
-            if (column == 0 || str_idx >= str_len)
-            {
-                send_col = 0xff;
-            }
-            else
-            {
-                if (str[str_idx] < 32 || str[str_idx] > 127)
-                {
-                    //Out of bounds, print a space
-                    letter = 0;
-                }
-                else
-                {
-                    letter = str[str_idx] - 32;
-                }
-                send_col = flip_invert(font5x8[(5*letter)+(5-column)]);
-            }
-            EPD_2IN9D_SendData(send_col);
-            if (++column > 5)
-            {
-                column = 0;
-                --str_idx;
-            }
-        }
-    }
-    EPD_2IN9D_SendData(0xff); //Unused column
+    return_cols[1] = ~upper_column;
+    return_cols[0] = ~lower_column;
 }
 
 /**
@@ -549,8 +486,9 @@ void epaper_SendDoubleTextLine(uint8_t *str, uint8_t str_len, bool full)
                 {
                     letter = str[str_idx] - 32;
                 }
-                uint8_t letter_column = font5x8[(5*letter)+(5-column)];
-                double_flip_invert(letter_column, send_col);
+                /* Artifically adding a space so decrement the index */
+                uint8_t letter_column = font5x8[(5*letter)+column-1];
+                double_invert(letter_column, send_col);
             }
 
             for (uint8_t i=0; i<2; i++)
@@ -563,6 +501,7 @@ void epaper_SendDoubleTextLine(uint8_t *str, uint8_t str_len, bool full)
                 }
             }
 
+            /* Artifically adding a space, so loop 6 times, not 5 */
             if (++column > 5)
             {
                 column = 0;
@@ -586,29 +525,7 @@ void epaper_SendDoubleTextLine(uint8_t *str, uint8_t str_len, bool full)
  * @param bytes_in_letter    Total bytes neede from the font file for this
  *                                 letter
  */
-void epaper_SendLetter(uint8_t letter, const char *font_p, uint8_t bytes_in_letter)
-{
-    /* Write space if letter is out of bounds */
-    if ((letter < ' ') || (letter> '~')) { letter = ' '; }
-
-    /* ASCII space=32 but font file begins at 0 */
-    letter -= ASCII_OFFSET;
-
-    for (uint16_t i=0; i<bytes_in_letter; i++) {
-        uint8_t letter_column = *(font_p + (letter*bytes_in_letter) + i);
-        EPD_2IN9D_SendData(~letter_column);
-    }
-}
-
-/**
- * @brief Write one character from font file to ePaper display
- *
- * @param letter    The letter to write to the display
- * @param font_p    Pointer to the font array
- * @param bytes_in_letter    Total bytes neede from the font file for this
- *                                 letter
- */
-void epaper_SendLetterNew(uint8_t letter, struct font_meta *font_m)
+void epaper_SendLetter(uint8_t letter, struct font_meta *font_m)
 {
     /* Write space if letter is out of bounds */
     if ((letter < ' ') || (letter> '~')) { letter = ' '; }
@@ -621,40 +538,6 @@ void epaper_SendLetterNew(uint8_t letter, struct font_meta *font_m)
     for (uint16_t i=0; i<bytes_in_letter; i++) {
         uint8_t letter_column = *(font_m->font_p + (letter*bytes_in_letter) + i);
         EPD_2IN9D_SendData(~letter_column);
-    }
-}
-
-void epaper_SendLargeTextLine(uint8_t *str, uint8_t str_len, uint8_t line, int8_t show_n_chars)
-{
-    /* Bounding */
-    line %= 8;
-
-    uint8_t letter;
-    uint8_t letter_column;
-    uint8_t char_count;
-
-    if (show_n_chars < 0) {
-        char_count = CHARS_PER_LINE;
-        for (uint8_t i=0; i<6; i++) EPD_2IN9D_SendData(0xff); //Unused columns
-    }
-    else {
-        char_count = show_n_chars;
-    }
-
-    for (uint8_t j=1; j<=char_count; j++) {
-        if (char_count-j >= str_len) {
-            /* String too short, send a space */
-            letter = ' ';
-        }
-        else {
-            letter = str[char_count-j];
-        }
-
-        epaper_SendLetter(letter , u_mono_bold_10x16, FONT_CHAR_S);
-    }
-
-    if (show_n_chars < 0) {
-        for (uint8_t i=0; i<6; i++) EPD_2IN9D_SendData(0xff); //Unused columns
     }
 }
 
@@ -691,7 +574,7 @@ void epaper_SendString(uint8_t *str, uint8_t str_len, uint8_t line, int8_t show_
             letter = str[char_count-j];
         }
 
-        epaper_SendLetterNew(letter, font_m);
+        epaper_SendLetter(letter, font_m);
     }
 
     if (show_n_chars < 0) {
@@ -753,103 +636,11 @@ void epaper_WriteString(uint8_t *str,
              * the "last-frame" into display memory. Do not refresh the second
              * time so that a partial write possible
              */
-            EPD_2IN9D_Refresh(); } } }
-
-void epaper_WriteLargeString(uint8_t *str, uint8_t str_len, uint8_t line, int16_t x_left)
-{
-    line %= 8;  /* Bounding */
-    if (x_left < 10) { return; }
-
-    uint8_t char_limit;
-    if (str_len*10 > x_left) {
-        char_limit = x_left/10;
+            EPD_2IN9D_Refresh();
+        }
     }
-    else {
-        char_limit = str_len;
-    }
-    uint16_t col_width = char_limit*10;
-
-    EPD_2IN9D_SendCommand(0x91);
-    EPD_2IN9D_SendPartialAddr(line*8, x_left-col_width, 16, col_width);
-    EPD_2IN9D_SendCommand(0x13);
-    epaper_SendLargeTextLine(str, str_len, line, char_limit);
-    EPD_2IN9D_SendCommand(0x92);
-
-    /* Refresh display, then write data again to prewind the "last-frame" */
-    EPD_2IN9D_Refresh();
-
-    EPD_2IN9D_SendCommand(0x91);
-    EPD_2IN9D_SendPartialAddr(line*8, x_left-col_width, 16, col_width);
-    EPD_2IN9D_SendCommand(0x13);
-    epaper_SendLargeTextLine(str, str_len, line, char_limit);
-    EPD_2IN9D_SendCommand(0x92);
 }
 
-void epaper_WriteLargeLine(uint8_t *str, uint8_t str_len, uint8_t line)
-{
-    line %= 8;  /* Bounding */
-
-    EPD_2IN9D_SendCommand(0x91);
-    EPD_2IN9D_SendPartialLineAddr(line);
-    EPD_2IN9D_SendCommand(0x13);
-    epaper_SendLargeTextLine(str, str_len, line, -1);
-    EPD_2IN9D_SendCommand(0x92);
-
-    /* Refresh display, then write data again to prewind the "last-frame" */
-    EPD_2IN9D_Refresh();
-
-    EPD_2IN9D_SendCommand(0x91);
-    EPD_2IN9D_SendPartialLineAddr(line);
-    EPD_2IN9D_SendCommand(0x13);
-    epaper_SendLargeTextLine(str, str_len, line, -1);
-    EPD_2IN9D_SendCommand(0x92);
-}
-
-void epaper_WriteLargeLetter(uint8_t letter, uint16_t x, uint8_t line)
-{
-    /* Bounding */
-    line %= 16;
-    if (line==15) return; /* Need 2 lines for this write operation */
-    if (x>=(296-10)) return; /* Need 10 columns for this write operation */
-
-    EPD_2IN9D_SendCommand(0x91);
-    EPD_2IN9D_SendPartialAddr(line*8, x, 16, 16);
-    EPD_2IN9D_SendCommand(0x13);
-    epaper_SendLetter(letter, u_mono_bold_10x16, FONT_CHAR_S);
-    EPD_2IN9D_SendCommand(0x92);
-
-    /* Refresh display, then write data again to prewind the "last-frame" */
-    EPD_2IN9D_Refresh();
-
-    EPD_2IN9D_SendCommand(0x91);
-    EPD_2IN9D_SendPartialAddr(line*8, x, 16, 16);
-    EPD_2IN9D_SendCommand(0x13);
-    epaper_SendLetter(letter, u_mono_bold_10x16, FONT_CHAR_S);
-    EPD_2IN9D_SendCommand(0x92);
-}
-
-void epaper_WriteVeryLargeLetter(uint8_t letter, uint16_t x, uint8_t line)
-{
-    /* Bounding */
-    line %= 16;
-    if (line>12) return; /* Need 4 lines for this write operation */
-    if (x>=(296-19)) return; /* Need 19 columns for this write operation */
-
-    EPD_2IN9D_SendCommand(0x91);
-    EPD_2IN9D_SendPartialAddr(line*8, x, 32, 19);
-    EPD_2IN9D_SendCommand(0x13);
-    epaper_SendLetter(letter, u_mono_bold_19x32, 4*19);
-    EPD_2IN9D_SendCommand(0x92);
-
-    /* Refresh display, then write data again to prewind the "last-frame" */
-    EPD_2IN9D_Refresh();
-
-    EPD_2IN9D_SendCommand(0x91);
-    EPD_2IN9D_SendPartialAddr(line*8, x, 32, 19);
-    EPD_2IN9D_SendCommand(0x13);
-    epaper_SendLetter(letter, u_mono_bold_19x32, 4*19);
-    EPD_2IN9D_SendCommand(0x92);
-}
 /**
  * @brief Use partial refresh to show string on one line of the display
  *
@@ -862,24 +653,11 @@ void epaper_WriteVeryLargeLetter(uint8_t letter, uint16_t x, uint8_t line)
  */
 void epaper_WriteLine(uint8_t *str, uint8_t str_len, uint8_t line)
 {
-    line %= 16;  /* Bounding */
+    epaper_WriteString(str, str_len, line, -1, &font_5x8);
+}
 
-    EPD_2IN9D_SendCommand(0x91);
-    EPD_2IN9D_SendPartialAddr(line*8, 0, 8, 296);
-    EPD_2IN9D_SendCommand(0x13);
-    epaper_SendTextLine(str, str_len);
-    EPD_2IN9D_SendCommand(0x92);
-
-    /* Refresh display, then write data again to prewind the "last-frame" */
-    EPD_2IN9D_Refresh();
-
-    EPD_2IN9D_SendCommand(0x91);
-    EPD_2IN9D_SendPartialAddr(line*8, 0, 8, 296);
-    EPD_2IN9D_SendCommand(0x13);
-    epaper_SendTextLine(str, str_len);
-    EPD_2IN9D_SendCommand(0x92);
-
-    /* Don't refresh, this data will be used in the next partial refresh */
+void epaper_WriteLargeLine(uint8_t *str, uint8_t str_len, uint8_t line) {
+    epaper_WriteString(str, str_len, line, -1, &font_10x16);
 }
 
 /**
