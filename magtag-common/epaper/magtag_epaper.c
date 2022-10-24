@@ -656,6 +656,42 @@ void epaper_WriteString(uint8_t *str,
 }
 
 /**
+ * @brief Use partial refresh to write text of different sizes to the screen
+ *
+ * This function will wake the screen, write your text using a font height of
+ * your choice, and place the screen back into power-down mode
+ *
+ * @param *str  String to be written to display
+ * @param str_len  Length of string to be written
+ * @param line  Line of display as y value; 0=top 15=bottom
+ * @param x_left  Pixel of display as x value; 295=left 0=right -1=use full line
+ * @param font_size_in_lines  Height of characters (1, 2, or 4)
+ */
+void epaper_Write(uint8_t *str, uint8_t str_len, uint8_t line, int16_t x_left, uint8_t font_size_in_lines)
+{
+    struct font_meta *font_m;
+    switch(font_size_in_lines) {
+        case 1:
+            font_m = &font_5x8;
+            break;
+        case 2:
+            font_m = &font_10x16;
+            break;
+        case 4:
+            font_m = &font_19x32;
+            break;
+        default:
+            LOG_ERR("Unsupported font height: %d", font_size_in_lines);
+            return;
+    }
+
+    EPD_2IN9D_Init();
+    EPD_2IN9D_SetPartReg();
+    epaper_WriteString(str, str_len, line, x_left, font_m);
+    EPD_2IN9D_PowerOff();
+}
+
+/**
  * @brief Use partial refresh to show string on one line of the display
  *
  * Display is considered protrait-mode 296x128. This leaves 16 lines that are
