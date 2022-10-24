@@ -642,7 +642,6 @@ void epaper_SendLargeTextLine(uint8_t *str, uint8_t str_len, uint8_t line, int8_
     }
 
     for (uint8_t j=1; j<=char_count; j++) {
-        if (show_n_chars > 0) LOG_DBG("j=%d %c",j,str[char_count-j]);
         if (char_count-j >= str_len) {
             /* String too short, send a space */
             letter = ' ';
@@ -669,8 +668,13 @@ void epaper_SendString(uint8_t *str, uint8_t str_len, uint8_t line, int8_t show_
 
     if (show_n_chars < 0) {
         char_count = EPD_2IN9D_HEIGHT/font_m->letter_width_bits;
-        line_space_front = (EPD_2IN9D_HEIGHT - char_count)/2;
-        line_space_back = EPD_2IN9D_HEIGHT - char_count - line_space_front;
+        /* Calculate leftover columns */
+        uint16_t text_columns = char_count * font_m->letter_width_bits;
+        line_space_front = (EPD_2IN9D_HEIGHT - (text_columns))/2;
+        line_space_back = EPD_2IN9D_HEIGHT - text_columns - line_space_front;
+        /* Adjust for font height */
+        line_space_front *= font_m->letter_height_bytes;
+        line_space_back *= font_m->letter_height_bytes;
         //Unused columns
         for (uint8_t i=0; i<line_space_front; i++) EPD_2IN9D_SendData(0xff);
     }
@@ -702,43 +706,54 @@ void epaper_WriteString(uint8_t *str,
                         int16_t x_left,
                         struct font_meta *font_m)
 {
-    LOG_DBG("font_pointers %p, %p", &font_10x16, &font_19x32);
-    LOG_DBG("font_meta %p, %d, %d", font_m->font_p, font_m->letter_width_bits, font_m->letter_height_bytes);
     /* Bounding */
     line %= EPD_2IN9D_PAGECNT;
     if (line > (EPD_2IN9D_PAGECNT - font_m->letter_height_bytes)) { return; }
-    if (x_left < font_m->letter_width_bits) { return; }
+    if ((x_left < font_m->letter_width_bits) && (x_left > 0)) { return; }
 
-    uint8_t char_limit;
-    if (str_len*font_m->letter_width_bits > x_left) {
-        char_limit = x_left/font_m->letter_width_bits;
+    /* Calculate how much screen space is available */
+    int16_t char_limit;
+    uint16_t col_start;
+    uint16_t col_width;
+    if (x_left < 0) {
+        /* Full screen width write */
+        char_limit = -1;
+        col_start = 0;
+        col_width = EPD_2IN9D_HEIGHT;
     }
     else {
-        char_limit = str_len;
+        if (str_len*font_m->letter_width_bits > x_left) {
+            /* Truncate number chars to fit on screen */
+            char_limit = x_left/font_m->letter_width_bits;
+        }
+        else {
+            /* All chars can fit on screen */
+            char_limit = str_len;
+        }
+
+        col_width = char_limit * font_m->letter_width_bits;
+        col_start = x_left - col_width;
     }
-    uint16_t col_width = char_limit*font_m->letter_width_bits;
 
-    EPD_2IN9D_SendCommand(0x91);
-    EPD_2IN9D_SendPartialAddr(line*8,
-                              x_left-col_width,
-                              font_m->letter_height_bytes * 8,
-                              col_width);
-    EPD_2IN9D_SendCommand(0x13);
-    epaper_SendString(str, str_len, line, char_limit, font_m);
-    EPD_2IN9D_SendCommand(0x92);
+    uint8_t pixel_height = font_m->letter_height_bytes * 8;
 
-    /* Refresh display, then write data again to prewind the "last-frame" */
-    EPD_2IN9D_Refresh();
+    for (uint8_t i=0; i<2; i++) {
+        EPD_2IN9D_SendCommand(0x91);
+        EPD_2IN9D_SendPartialAddr(line*8,
+                                  col_start,
+                                  pixel_height,
+                                  col_width);
+        EPD_2IN9D_SendCommand(0x13);
+        epaper_SendString(str, str_len, line, char_limit, font_m);
+        EPD_2IN9D_SendCommand(0x92);
 
-    EPD_2IN9D_SendCommand(0x91);
-    EPD_2IN9D_SendPartialAddr(line*8,
-                              x_left-col_width,
-                              font_m->letter_height_bytes * 8,
-                              col_width);
-    EPD_2IN9D_SendCommand(0x13);
-    epaper_SendString(str, str_len, line, char_limit, font_m);
-    EPD_2IN9D_SendCommand(0x92);
-}
+        if (i==0) {
+            /*
+             * Refresh display the first time, then write data again to prewind
+             * the "last-frame" into display memory. Do not refresh the second
+             * time so that a partial write possible
+             */
+            EPD_2IN9D_Refresh(); } } }
 
 void epaper_WriteLargeString(uint8_t *str, uint8_t str_len, uint8_t line, int16_t x_left)
 {
