@@ -42,9 +42,9 @@ bool _display_asleep = true;
 #include "ubuntu_monospaced_bold_10x16.h"
 #include "ubuntu_monospaced_bold_19x32.h"
 
-struct font_meta font_6x8 = { font6x8, 6, 1 };
-struct font_meta font_10x16 = { u_mono_bold_10x16, 10, 2 };
-struct font_meta font_19x32 = { u_mono_bold_19x32, 19, 4 };
+struct font_meta font_6x8 = { font6x8, 6, 1, false };
+struct font_meta font_10x16 = { u_mono_bold_10x16, 10, 2, false };
+struct font_meta font_19x32 = { u_mono_bold_19x32, 19, 4, false };
 
 /**
  * partial screen update LUT
@@ -530,7 +530,12 @@ void epaper_LetterToRam(uint8_t letter, struct font_meta *font_m)
 
     for (uint16_t i=0; i<bytes_in_letter; i++) {
         uint8_t letter_column = *(font_m->font_p + (letter*bytes_in_letter) + i);
-        EPD_2IN9D_SendData(~letter_column);
+        if (font_m->inverted) {
+            EPD_2IN9D_SendData(letter_column);
+        }
+        else {
+            EPD_2IN9D_SendData(~letter_column);
+        }
     }
 }
 
@@ -671,6 +676,19 @@ void epaper_WriteString(uint8_t *str,
     }
 }
 
+struct font_meta* get_font_meta(uint8_t linesize) {
+    switch(linesize) {
+        case 1:
+            return &font_6x8;
+        case 2:
+            return &font_10x16;
+        case 4:
+            return &font_19x32;
+        default:
+            LOG_ERR("Unsupported font height: %d", linesize);
+            return 0;
+    }
+}
 /**
  * @brief Use partial refresh to write text of different sizes to the screen
  *
@@ -686,26 +704,36 @@ void epaper_WriteString(uint8_t *str,
  */
 void epaper_Write(uint8_t *str, uint8_t str_len, uint8_t line, int16_t x_left, uint8_t font_size_in_lines)
 {
-    struct font_meta *font_m;
-    switch(font_size_in_lines) {
-        case 1:
-            font_m = &font_6x8;
-            break;
-        case 2:
-            font_m = &font_10x16;
-            break;
-        case 4:
-            font_m = &font_19x32;
-            break;
-        default:
-            LOG_ERR("Unsupported font height: %d", font_size_in_lines);
-            return;
-    }
+    struct font_meta *font_m = get_font_meta(font_size_in_lines);
+    if (font_m == 0) { return; }
 
     EPD_2IN9D_Init();
     EPD_2IN9D_SetPartReg();
     epaper_WriteString(str, str_len, line, x_left, font_m);
     EPD_2IN9D_PowerOff();
+}
+
+/**
+ * @brief Use partial refresh to write inverted text of different sizes to the screen
+ *
+ * This function will wake the screen, write your text using a font height of
+ * your choice, and place the screen back into power-down mode
+ *
+ * @param *str  String to be written to display
+ * @param str_len  Length of string to be written
+ * @param line  Line of display as y value; 0=top 15=bottom
+ * @param x_left  Pixel of display as x value;
+ *                295=left 0=right -1=use full line -2=center text
+ * @param font_size_in_lines  Height of characters (1, 2, or 4)
+ */
+void epaper_WriteInverted(uint8_t *str, uint8_t str_len, uint8_t line, int16_t x_left, uint8_t font_size_in_lines)
+{
+    struct font_meta *font_m = get_font_meta(font_size_in_lines);
+    if (font_m == 0) { return; }
+
+    font_m->inverted = true;
+    epaper_Write(str, str_len, line, x_left, font_size_in_lines);
+    font_m->inverted = false;
 }
 
 /**
