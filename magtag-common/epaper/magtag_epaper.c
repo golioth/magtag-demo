@@ -610,14 +610,32 @@ void epaper_WriteString(uint8_t *str,
     int16_t char_limit;
     uint16_t col_start;
     uint16_t col_width;
-    if (x_left < 0) {
+    if (x_left < -2) {
+        LOG_ERR("Unrecognized x_left value: %d", x_left);
+        return;
+    }
+    else if (x_left == FULL_WIDTH) {
         /* Full screen width write */
-        char_limit = -1;
+        DO_FULL_WIDTH:
+        char_limit = FULL_WIDTH;
         col_start = 0;
         col_width = EPD_2IN9D_HEIGHT;
     }
     else {
-        if (str_len*font_m->letter_width_bits > x_left) {
+        uint16_t string_cols_needed = str_len*font_m->letter_width_bits;
+        if (x_left == CENTER) {
+            /* Trick to center the text on screen */
+            if (string_cols_needed < EPD_2IN9D_HEIGHT-1) {
+                x_left = EPD_2IN9D_HEIGHT-((EPD_2IN9D_HEIGHT-string_cols_needed)/2);
+            }
+            else {
+                /* Too wide, so used full width (will center) */
+                x_left = FULL_WIDTH;
+                goto DO_FULL_WIDTH;
+            }
+
+        }
+        if (string_cols_needed > x_left) {
             /* Truncate number chars to fit on screen */
             char_limit = x_left/font_m->letter_width_bits;
         }
@@ -662,7 +680,8 @@ void epaper_WriteString(uint8_t *str,
  * @param *str  String to be written to display
  * @param str_len  Length of string to be written
  * @param line  Line of display as y value; 0=top 15=bottom
- * @param x_left  Pixel of display as x value; 295=left 0=right -1=use full line
+ * @param x_left  Pixel of display as x value;
+ *                295=left 0=right -1=use full line -2=center text
  * @param font_size_in_lines  Height of characters (1, 2, or 4)
  */
 void epaper_Write(uint8_t *str, uint8_t str_len, uint8_t line, int16_t x_left, uint8_t font_size_in_lines)
@@ -701,11 +720,11 @@ void epaper_Write(uint8_t *str, uint8_t str_len, uint8_t line, int16_t x_left, u
  */
 void epaper_WriteLine(uint8_t *str, uint8_t str_len, uint8_t line)
 {
-    epaper_WriteString(str, str_len, line, -1, &font_6x8);
+    epaper_WriteString(str, str_len, line, FULL_WIDTH, &font_6x8);
 }
 
 void epaper_WriteLargeLine(uint8_t *str, uint8_t str_len, uint8_t line) {
-    epaper_WriteString(str, str_len, line, -1, &font_10x16);
+    epaper_WriteString(str, str_len, line, FULL_WIDTH, &font_10x16);
 }
 
 /**

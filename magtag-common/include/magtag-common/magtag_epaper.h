@@ -18,6 +18,10 @@
 #define ASCII_OFFSET    32  // Font start with space (char 32)
 #define AUTOWRITE_REFRESH_AFTER_N_LINES	  16
 
+/* Defines used for special-function x_lines values */
+#define FULL_WIDTH  -1
+#define CENTER      -2
+
 /*
  * Fonts
  */
