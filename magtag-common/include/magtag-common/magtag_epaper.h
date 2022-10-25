@@ -29,6 +29,7 @@ struct font_meta {
     const char *font_p;
     uint8_t letter_width_bits;
     uint8_t letter_height_bytes;
+    bool inverted;
 };
 
 bool EPD_2IN9D_IsAsleep(void);
@@ -56,6 +57,7 @@ void double_invert(uint8_t orig_column, uint8_t return_cols[2]);
 void epaper_SendDoubleTextLine(uint8_t *str, uint8_t str_len, bool full);
 void epaper_LetterToRam(uint8_t letter, struct font_meta *font_m);
 void epaper_Write(uint8_t *str, uint8_t str_len, uint8_t line, int16_t x_left, uint8_t font_size_in_lines);
+void epaper_WriteInverted(uint8_t *str, uint8_t str_len, uint8_t line, int16_t x_left, uint8_t font_size_in_lines);
 void epaper_WriteLine(uint8_t *str, uint8_t str_len, uint8_t line);
 void epaper_WriteDoubleLine(uint8_t *str, uint8_t str_len, uint8_t line);
 void epaper_StringToRam(uint8_t *str, uint8_t str_len, uint8_t line, int8_t show_n_chars, struct font_meta *font_m);
