@@ -7,6 +7,7 @@
 #define MYNAME	"John Hackworth"
 #define TITLE	"Nanotech Engineer"
 #define HANDLE	"@Kurt_Vonnegut"
+#define DEFAULT_FRAME	0
 
 #define NAME_SIZE 64
 char _myname[NAME_SIZE] = MYNAME;
@@ -48,35 +49,14 @@ K_MSGQ_DEFINE(button_action_msgq,
 /* Golioth */
 static struct golioth_client *client = GOLIOTH_SYSTEM_CLIENT_GET();
 static K_SEM_DEFINE(connected, 0, 1);
+static K_SEM_DEFINE(user_update_choice, 0, 1);
+static K_SEM_DEFINE(wifi_control, 0, 1);
 struct k_mutex epaper_mutex;
 
 static void golioth_on_connect(struct golioth_client *client)
 {
 	k_sem_give(&connected);
 }
-
-/* Timers for sound (PWM not yet implemented in ESP32s2 */
-#define ACTIVATE_NODE DT_ALIAS(activate)
-#define SOUND_NODE DT_ALIAS(sound)
-static const struct gpio_dt_spec act = GPIO_DT_SPEC_GET(ACTIVATE_NODE, gpios);
-static const struct gpio_dt_spec snd = GPIO_DT_SPEC_GET(SOUND_NODE, gpios);
-
-void make_sound_timer_handler(struct k_timer *dummy)
-{
-	gpio_pin_toggle_dt(&snd);
-}
-
-K_TIMER_DEFINE(make_sound_timer, make_sound_timer_handler, NULL);
-
-void end_note_timer_handler(struct k_timer *dummy)
-{
-	k_timer_stop(&make_sound_timer);
-	gpio_pin_set_dt(&snd, 0);
-	gpio_pin_set_dt(&act, 0);
-}
-
-K_TIMER_DEFINE(end_note_timer, end_note_timer_handler, NULL);
-uint16_t notes[4] = {764,580,470,400};
 
 int fetch_name_from_golioth(uint8_t idx) {
 	int err = 0;
@@ -88,17 +68,6 @@ int fetch_name_from_golioth(uint8_t idx) {
 	else if (idx == 1) { dest_ptr = _title; strcpy(endpoint, "title"); }
 	else if (idx == 2) { dest_ptr = _handle; strcpy(endpoint, "handle"); }
 	else { return -1; }
-
-	if (IS_ENABLED(CONFIG_GOLIOTH_SAMPLES_COMMON)) {
-		epaper_Write("Connecting to WiFi", 18, (row_idx++)*2, FULL_WIDTH, 2);
-		net_connect();
-	}
-
-	client->on_connect = golioth_on_connect;
-	golioth_system_client_start();
-
-	/* wait until we've connected to golioth */
-	k_sem_take(&connected, K_SECONDS(30));
 
 	if (!golioth_is_connected(client)) {
 		err = -ENETDOWN;
@@ -133,7 +102,7 @@ int fetch_name_from_golioth(uint8_t idx) {
 
 	}
 
-	golioth_system_client_stop();
+// 	golioth_system_client_stop();
 	return err;
 }
 
@@ -220,6 +189,33 @@ void nametag_green(void) {
 	epaper_Write(lastname, strlen(lastname), 10, 216, 4);
 }
 
+void nametag_red(void) {
+	led_color_changer(ALLRED);
+
+	epaper_FullClear();
+	epaper_ShowFullFrame(frame3);
+	epaper_Write(_myname, strlen(_myname), 2, CENTER, 4);
+	epaper_WriteInverted(_title, strlen(_title), 11, CENTER, 2);
+	epaper_WriteInverted(_handle, strlen(_handle), 13, CENTER, 2);
+}
+
+/**
+ * @brief Unused function awaiting workshop user customization
+ */
+void nametag_training_challenge(void) {
+
+	/* Perform a full-refresh on the display */
+	epaper_FullClear();
+
+	/* Use a partial write to draw the background */
+	epaper_ShowFullFrame(frame3);
+
+	/* Write text on top of the background */
+	epaper_Write(_myname, strlen(_myname), 2, CENTER, 4);
+	epaper_WriteInverted(_title, strlen(_title), 11, CENTER, 2);
+	epaper_WriteInverted(_handle, strlen(_handle), 13, CENTER, 2);
+}
+
 void nametag_rainbow(void) {
 
 	led_color_changer(RAINBOW);
@@ -241,17 +237,33 @@ void nametag_rainbow(void) {
 			return;
 		}
 	}
-
-	epaper_ShowFullFrame(frame3);
-	epaper_Write(_myname, strlen(_myname), 2, CENTER, 4);
-	epaper_WriteInverted(_title, strlen(_title), 11, CENTER, 2);
-	epaper_WriteInverted(_handle, strlen(_handle), 13, CENTER, 2);
+	nametag_red();
 }
 
 void button_action_work_handler(struct k_work *work) {
 	while (k_msgq_num_used_get(&button_action_msgq)) {
 		uint8_t i;
 		k_msgq_get(&button_action_msgq, &i, K_NO_WAIT);
+
+		LOG_INF("semaphore: %d", k_sem_count_get(&user_update_choice));
+
+		if (k_sem_count_get(&user_update_choice) == 0) {
+			/* Device await user response at boot time */
+			if (i==0) {
+				LOG_INF("User chose: No");
+				k_sem_give(&user_update_choice);
+			}
+			else if (i==1) {
+				/* User said yes to WiFi update */
+				LOG_INF("User chose: Yes");
+				k_sem_give(&wifi_control);
+				k_sem_give(&user_update_choice);
+			}
+			else {
+				LOG_INF("Invalid user choice: %d", i);
+			}
+			return;
+		}
 
 		/* Update the ePaper frame */
 		if (k_mutex_lock(&epaper_mutex, K_SECONDS(1))==0) {
@@ -275,8 +287,12 @@ void button_action_work_handler(struct k_work *work) {
 					epaper_WriteInverted(_title, strlen(_title), 11, CENTER, 2);
 					epaper_WriteInverted(_handle, strlen(_handle), 13, CENTER, 2);
 					break;
-				default:
+				case 4:
+					LOG_INF("Fetching data");
 					nametag_rainbow();
+					break;
+				default:
+					nametag_red();
 			}
 			k_mutex_unlock(&epaper_mutex);
 		}
@@ -346,22 +362,42 @@ void main(void)
 	k_mutex_init(&epaper_mutex);
 
 	ws2812_init();
-	epaper_init();
-
-
-	/* buttons */
-	buttons_init(button_pressed);
-
-	/* Setup pins for sound */
-	gpio_pin_configure_dt(&act, GPIO_OUTPUT_ACTIVE);
-	gpio_pin_configure_dt(&snd, GPIO_OUTPUT_ACTIVE);
-	gpio_pin_set_dt(&act, 0);
-
 	led_states[0].color = RED; led_states[0].state = 1;
 	led_states[1].color = GREEN; led_states[1].state = 1;
 	led_states[2].color = BLUE; led_states[2].state = 1;
 	led_states[3].color = YELLOW; led_states[3].state = 1;
 	ws2812_blit(strip, led_states, STRIP_NUM_PIXELS);
+
+	/* buttons */
+	buttons_init(button_pressed);
+
+	epaper_init();
+	epaper_Write("Update name via Golioth?", 24, 12, FULL_WIDTH, 2);
+	epaper_Write("YES", 3, 14, 140, 2);
+	epaper_Write("NO", 2, 14, 60, 2);
+	uint8_t default_screen = (DEFAULT_FRAME < 4 ? DEFAULT_FRAME : 0);
+
+	LOG_INF("Awaiting user choice...");
+	k_sem_take(&user_update_choice, K_FOREVER);
+	k_sem_give(&user_update_choice); /* Don't block elsewhere */
+
+	if (k_sem_count_get(&wifi_control)) {
+		if (IS_ENABLED(CONFIG_GOLIOTH_SAMPLES_COMMON)) {
+			net_connect();
+		}
+
+		client->on_connect = golioth_on_connect;
+		golioth_system_client_start();
+
+		/* wait until we've connected to golioth */
+		k_sem_take(&connected, K_FOREVER);
+		LOG_INF("Connecting established!");
+		default_screen = 4;
+	}
+
+	k_msgq_put(&button_action_msgq, &default_screen, K_FOREVER);
+	LOG_INF("Submitting work from main");
+	k_work_submit(&button_action_work);
 
 	/* No need for loop, threads will handle program flow */
 }
