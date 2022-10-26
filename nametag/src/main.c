@@ -55,15 +55,6 @@ static void golioth_on_connect(struct golioth_client *client)
 	k_sem_give(&connected);
 }
 
-static int lightdb_handler(struct golioth_req_rsp *rsp)
-{
-	if (rsp->err) {
-		LOG_WRN("Asnyc Golioth function failed: %d", rsp->err);
-		return rsp->err;
-	}
-	return 0;
-}
-
 /* Timers for sound (PWM not yet implemented in ESP32s2 */
 #define ACTIVATE_NODE DT_ALIAS(activate)
 #define SOUND_NODE DT_ALIAS(sound)
@@ -72,14 +63,14 @@ static const struct gpio_dt_spec snd = GPIO_DT_SPEC_GET(SOUND_NODE, gpios);
 
 void make_sound_timer_handler(struct k_timer *dummy)
 {
-    gpio_pin_toggle_dt(&snd);
+	gpio_pin_toggle_dt(&snd);
 }
 
 K_TIMER_DEFINE(make_sound_timer, make_sound_timer_handler, NULL);
 
 void end_note_timer_handler(struct k_timer *dummy)
 {
-    k_timer_stop(&make_sound_timer);
+	k_timer_stop(&make_sound_timer);
 	gpio_pin_set_dt(&snd, 0);
 	gpio_pin_set_dt(&act, 0);
 }
@@ -88,6 +79,9 @@ K_TIMER_DEFINE(end_note_timer, end_note_timer_handler, NULL);
 uint16_t notes[4] = {764,580,470,400};
 
 int fetch_name_from_golioth(uint8_t idx) {
+	int err = 0;
+	uint8_t row_idx = 1;
+
 	uint8_t *dest_ptr;
 	char endpoint[16];
 	if (idx == 0) { dest_ptr = _myname; strcpy(endpoint, "name"); }
@@ -95,8 +89,19 @@ int fetch_name_from_golioth(uint8_t idx) {
 	else if (idx == 2) { dest_ptr = _handle; strcpy(endpoint, "handle"); }
 	else { return -1; }
 
+	if (IS_ENABLED(CONFIG_GOLIOTH_SAMPLES_COMMON)) {
+		epaper_Write("Connecting to WiFi", 18, (row_idx++)*2, FULL_WIDTH, 2);
+		net_connect();
+	}
+
+	client->on_connect = golioth_on_connect;
+	golioth_system_client_start();
+
+	/* wait until we've connected to golioth */
+	k_sem_take(&connected, K_SECONDS(30));
+
 	if (!golioth_is_connected(client)) {
-		return -ENETDOWN;
+		err = -ENETDOWN;
 	}
 	else {
 		LOG_INF("Fetching %s information from Golioth LightDB State", endpoint);
@@ -110,113 +115,168 @@ int fetch_name_from_golioth(uint8_t idx) {
 
 		if (err) {
 			LOG_ERR("Unable to fetch name information from Golioth: %d", err);
+			epaper_Write("Unable to fetch", 15, (row_idx++)*2, FULL_WIDTH, 2);
 			return err;
 		}
 
 		if (strncmp(name_update, "null", 4)==0) {
+			epaper_Write("Endpoint missing on Golioth", 27, (row_idx++)*2, FULL_WIDTH, 2);
 			LOG_INF("Endpoint doesn't exist: %s", endpoint);
 		}
 		else {
 			/* hack to remove quotes received with JSON string */
 			name_update[len-1] = '\0';
 			memcpy(dest_ptr, name_update+1, NAME_SIZE);
+			epaper_Write("Success!", 8, (row_idx++)*2, FULL_WIDTH, 2);
 			LOG_INF("Received new name: %s", dest_ptr);
 		}
 
 	}
-	return 0;
+
+	golioth_system_client_stop();
+	return err;
+}
+
+enum nametag_colors{
+	ALLRED,
+	ALLGREEN,
+	ALLBLUE,
+	ALLYELLOW,
+	RAINBOW
+};
+
+void led_color_changer(enum nametag_colors n_color) {
+	if (n_color == RAINBOW) {
+		led_states[0].color = RED;
+		led_states[1].color = GREEN;
+		led_states[2].color = BLUE;
+		led_states[3].color = YELLOW;
+		ws2812_blit(strip, led_states, STRIP_NUM_PIXELS);
+		return;
+	}
+
+	uint8_t preset;
+	switch(n_color) {
+		case ALLRED:
+			preset = RED;
+			break;
+		case ALLGREEN:
+			preset = GREEN;
+			break;
+		case ALLBLUE:
+			preset = BLUE;
+			break;
+		case ALLYELLOW:
+			preset = YELLOW;
+			break;
+		default:
+			return;
+	}
+
+	for (uint8_t i=0; i<4; i++) {
+		led_states[i].color = preset;
+	}
+	ws2812_blit(strip, led_states, STRIP_NUM_PIXELS);
+}
+
+void nametag_green(void) {
+	led_color_changer(ALLGREEN);
+
+	epaper_FullClear();
+	epaper_ShowFullFrame(frame1);
+
+	char firstname[20] = " ";
+	char lastname[20] = " ";
+	char *ptr = firstname;
+
+	uint8_t iter = 0;
+	uint8_t idx = 0;
+	while(iter<40) {
+		if (idx == 19) {
+			*(ptr+iter) = '\0';
+			iter = 254;
+		}
+		else if (iter >= strlen(_myname)) {
+			*(ptr+idx) = '\0';
+			iter = 254;
+		}
+		else if (_myname[iter] == ' ') {
+			*(ptr+idx) = '\0';
+			if (ptr == firstname) {
+				ptr=lastname;
+				idx = 0;
+			}
+			else {
+				iter = 254;
+			}
+		}
+		else {
+			*(ptr+idx) = _myname[iter];
+			++idx;
+		}
+		++iter;
+	}
+	epaper_Write(firstname, strlen(firstname), 5, 216, 4);
+	epaper_Write(lastname, strlen(lastname), 10, 216, 4);
+}
+
+void nametag_rainbow(void) {
+
+	led_color_changer(RAINBOW);
+
+	epaper_FullClear();
+	epaper_ShowFullFrame((void *)golioth_logo);
+	epaper_Write("Fetching name from Golioth", 26, 0, FULL_WIDTH, 2);
+
+	int err;
+	for (uint8_t i=0; i<3; i++) {
+		err = fetch_name_from_golioth(i);
+		if (err != 0) {
+			if (err == -ENETDOWN) {
+				epaper_Write("Err: Not connected to Golioth", 29, 14, FULL_WIDTH, 2);
+			}
+			else {
+				epaper_Write("Unknown error", 13, 14, FULL_WIDTH, 2);
+			}
+			return;
+		}
+	}
+
+	epaper_ShowFullFrame(frame3);
+	epaper_Write(_myname, strlen(_myname), 2, CENTER, 4);
+	epaper_WriteInverted(_title, strlen(_title), 11, CENTER, 2);
+	epaper_WriteInverted(_handle, strlen(_handle), 13, CENTER, 2);
 }
 
 void button_action_work_handler(struct k_work *work) {
 	while (k_msgq_num_used_get(&button_action_msgq)) {
 		uint8_t i;
 		k_msgq_get(&button_action_msgq, &i, K_NO_WAIT);
-		int8_t toggle_val = led_states[i].state > 0 ? 0 : 1;
-		led_states[i].state = toggle_val;
-		/* update local LED output immediately */
-		ws2812_blit(strip, led_states, STRIP_NUM_PIXELS);
-
-		gpio_pin_set_dt(&act, 1);
-		k_timer_start(&make_sound_timer, K_USEC(notes[i]), K_USEC(notes[i]));
-		k_timer_start(&end_note_timer, K_MSEC(200), K_NO_WAIT);
 
 		/* Update the ePaper frame */
 		if (k_mutex_lock(&epaper_mutex, K_SECONDS(1))==0) {
-			epaper_FullClear();
-
 			switch(i) {
 				case 1:
-					epaper_ShowFullFrame(frame1);
-					char firstname[20] = " ";
-					char lastname[20] = " ";
-					char *ptr = firstname;
-
-					uint8_t iter = 0;
-					uint8_t idx = 0;
-					while(iter<40) {
-						if (idx == 19) {
-							*(ptr+iter) = '\0';
-							iter = 254;
-						}
-						else if (iter >= strlen(_myname)) {
-							*(ptr+idx) = '\0';
-							iter = 254;
-						}
-						else if (_myname[iter] == ' ') {
-							*(ptr+idx) = '\0';
-							if (ptr == firstname) {
-								ptr=lastname;
-								idx = 0;
-							}
-							else {
-								iter = 254;
-							}
-						}
-						else {
-							*(ptr+idx) = _myname[iter];
-							++idx;
-						}
-						++iter;
-					}
-					epaper_Write(firstname, strlen(firstname), 5, 216, 4);
-					epaper_Write(lastname, strlen(lastname), 10, 216, 4);
+					nametag_green();
 					break;
 				case 2:
+					led_color_changer(ALLBLUE);
+					epaper_FullClear();
 					epaper_ShowFullFrame(frame2);
 					epaper_WriteInverted("HELLO", 5, 2, CENTER, 2);
 					epaper_WriteInverted("my name is", 10, 4, CENTER, 1);
 					epaper_Write(_myname, strlen(_myname), 8, CENTER, 4);
-					
 					break;
 				case 3:
+					led_color_changer(ALLYELLOW);
+					epaper_FullClear();
 					epaper_ShowFullFrame(frame3);
 					epaper_Write(_myname, strlen(_myname), 2, CENTER, 4);
 					epaper_WriteInverted(_title, strlen(_title), 11, CENTER, 2);
 					epaper_WriteInverted(_handle, strlen(_handle), 13, CENTER, 2);
 					break;
 				default:
-					epaper_ShowFullFrame((void *)golioth_logo);
-					epaper_Write("Fetching name from Golioth", 26, 0, FULL_WIDTH, 2);
-
-					int err;
-					for (uint8_t i=0; i<3; i++) {
-						err = fetch_name_from_golioth(i);
-						if (err != 0) {
-							if (err == -ENETDOWN) {
-								epaper_Write("Err: Not connected to Golioth", 29, 14, FULL_WIDTH, 2);
-							}
-							else {
-								epaper_Write("Unknown error", 13, 14, FULL_WIDTH, 2);
-							}
-							break;
-						}
-					}
-					if (err==0) {
-						epaper_ShowFullFrame(frame3);
-						epaper_Write(_myname, strlen(_myname), 2, CENTER, 4);
-						epaper_WriteInverted(_title, strlen(_title), 11, CENTER, 2);
-						epaper_WriteInverted(_handle, strlen(_handle), 13, CENTER, 2);
-					}
+					nametag_rainbow();
 			}
 			k_mutex_unlock(&epaper_mutex);
 		}
@@ -288,15 +348,6 @@ void main(void)
 	ws2812_init();
 	epaper_init();
 
-	if (IS_ENABLED(CONFIG_GOLIOTH_SAMPLES_COMMON)) {
-		net_connect();
-	}
-
-	client->on_connect = golioth_on_connect;
-	golioth_system_client_start();
-// 
-// 	/* wait until we've connected to golioth */
-// 	k_sem_take(&connected, K_FOREVER);
 
 	/* buttons */
 	buttons_init(button_pressed);
@@ -306,38 +357,11 @@ void main(void)
 	gpio_pin_configure_dt(&snd, GPIO_OUTPUT_ACTIVE);
 	gpio_pin_set_dt(&act, 0);
 
-	/* ePaper */
-// 	EPD_2IN9D_Init();
-// 	EPD_2IN9D_SetPartReg();
-// 	epaper_WriteDoubleLine(CONFIG_MAGTAG_NAME, strlen(CONFIG_MAGTAG_NAME), 7);
-// 	EPD_2IN9D_PowerOff();
-
-	/* write successful connection message to screen */
-// 	LOG_INF("Connected to Golioth!: %s", CONFIG_MAGTAG_NAME);
-// 	epaper_autowrite("Connected to Golioth!", 21);
-// 	EPD_2IN9D_Sleep();
-
 	led_states[0].color = RED; led_states[0].state = 1;
 	led_states[1].color = GREEN; led_states[1].state = 1;
 	led_states[2].color = BLUE; led_states[2].state = 1;
 	led_states[3].color = YELLOW; led_states[3].state = 1;
 	ws2812_blit(strip, led_states, STRIP_NUM_PIXELS);
 
-	/* write starting button values to LightDB state */
-// 	uint8_t endpoint[32];
-// 	for (uint8_t i=0; i<4; i++) {
-// 		snprintk(endpoint, sizeof(endpoint)-1, "Button_%c", 'A'+i);
-// 		int err = golioth_lightdb_set(client,
-// 					endpoint,
-// 					GOLIOTH_CONTENT_FORMAT_APP_JSON,
-// 					"true", 4);
-// 		if (err) {
-// 			LOG_WRN("Failed to update Button_%c: %d", 'A'+i, err);
-// 		}
-// 	}
-
-	int err;
-	while (true) {
-		k_sleep(K_SECONDS(5));
-	}
+	/* No need for loop, threads will handle program flow */
 }
