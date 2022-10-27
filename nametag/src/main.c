@@ -7,7 +7,7 @@
 #define MYNAME	"John Hackworth"
 #define TITLE	"Nanotech Engineer"
 #define HANDLE	"@Kurt_Vonnegut"
-#define DEFAULT_FRAME	0
+#define DEFAULT_FRAME	3
 
 #define NAME_SIZE 64
 char _myname[NAME_SIZE] = MYNAME;
@@ -193,10 +193,10 @@ void nametag_red(void) {
 	led_color_changer(ALLRED);
 
 	epaper_FullClear();
-	epaper_ShowFullFrame(frame3);
-	epaper_Write(_myname, strlen(_myname), 2, CENTER, 4);
-	epaper_WriteInverted(_title, strlen(_title), 11, CENTER, 2);
-	epaper_WriteInverted(_handle, strlen(_handle), 13, CENTER, 2);
+	epaper_ShowFullFrame(frame0);
+	epaper_Write(_title, strlen(_title), 1, 284, 2);
+	epaper_Write(_myname, strlen(_myname), 6, CENTER, 4);
+	epaper_Write(_handle, strlen(_handle), 13, 204, 2);
 }
 
 /**
