@@ -255,6 +255,11 @@ void button_action_work_handler(struct k_work *work) {
 			else if (i==1) {
 				/* User said yes to WiFi update */
 				LOG_INF("User chose: Yes");
+				led_color_changer(RAINBOW);
+				if (k_mutex_lock(&epaper_mutex, K_SECONDS(1))==0) {
+					epaper_Write("Starting WiFi...", 16, 0, 160, 2);
+					k_mutex_unlock(&epaper_mutex);
+				}
 				k_sem_give(&wifi_control);
 				k_sem_give(&user_update_choice);
 			}
@@ -361,10 +366,10 @@ void main(void)
 	k_mutex_init(&epaper_mutex);
 
 	ws2812_init();
-	led_states[0].color = RED; led_states[0].state = 1;
-	led_states[1].color = GREEN; led_states[1].state = 1;
-	led_states[2].color = BLUE; led_states[2].state = 1;
-	led_states[3].color = YELLOW; led_states[3].state = 1;
+	led_states[0].color = BLUE; led_states[0].state = 1;
+	led_states[1].color = BLUE; led_states[1].state = 1;
+	led_states[2].color = BLACK; led_states[2].state = 1;
+	led_states[3].color = BLACK; led_states[3].state = 1;
 	ws2812_blit(strip, led_states, STRIP_NUM_PIXELS);
 
 	/* buttons */
