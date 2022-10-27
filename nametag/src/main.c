@@ -148,7 +148,28 @@ void led_color_changer(enum nametag_colors n_color) {
 	ws2812_blit(strip, led_states, STRIP_NUM_PIXELS);
 }
 
+void nametag_blue(void) {
+	if (k_mutex_lock(&epaper_mutex, K_SECONDS(1))!=0) {
+		/* ePaper already in use, abort */
+		return;
+	}
+
+	led_color_changer(ALLBLUE);
+	epaper_FullClear();
+	epaper_ShowFullFrame(frame2);
+	epaper_WriteInverted("HELLO", 5, 2, CENTER, 2);
+	epaper_WriteInverted("my name is", 10, 4, CENTER, 1);
+	epaper_Write(_myname, strlen(_myname), 8, CENTER, 4);
+
+	k_mutex_unlock(&epaper_mutex);
+}
+
 void nametag_green(void) {
+	if (k_mutex_lock(&epaper_mutex, K_SECONDS(1))!=0) {
+		/* ePaper already in use, abort */
+		return;
+	}
+
 	led_color_changer(ALLGREEN);
 
 	epaper_FullClear();
@@ -187,9 +208,16 @@ void nametag_green(void) {
 	}
 	epaper_Write(firstname, strlen(firstname), 5, 216, 4);
 	epaper_Write(lastname, strlen(lastname), 10, 216, 4);
+
+	k_mutex_unlock(&epaper_mutex);
 }
 
 void nametag_red(void) {
+	if (k_mutex_lock(&epaper_mutex, K_SECONDS(1))!=0) {
+		/* ePaper already in use, abort */
+		return;
+	}
+
 	led_color_changer(ALLRED);
 
 	epaper_FullClear();
@@ -197,26 +225,57 @@ void nametag_red(void) {
 	epaper_Write(_title, strlen(_title), 1, 284, 2);
 	epaper_Write(_myname, strlen(_myname), 6, CENTER, 4);
 	epaper_Write(_handle, strlen(_handle), 13, 204, 2);
+
+	k_mutex_unlock(&epaper_mutex);
 }
 
 /**
  * @brief Unused function awaiting workshop user customization
  */
 void nametag_training_challenge(void) {
+	if (k_mutex_lock(&epaper_mutex, K_SECONDS(1))!=0) {
+		/* ePaper already in use, abort */
+		return;
+	}
 
 	/* Perform a full-refresh on the display */
 	epaper_FullClear();
 
 	/* Use a partial write to draw the background */
+	/* Change frame3 to the name of your array */
 	epaper_ShowFullFrame(frame3);
 
 	/* Write text on top of the background */
 	epaper_Write(_myname, strlen(_myname), 2, CENTER, 4);
 	epaper_WriteInverted(_title, strlen(_title), 11, CENTER, 2);
 	epaper_WriteInverted(_handle, strlen(_handle), 13, CENTER, 2);
+
+	k_mutex_unlock(&epaper_mutex);
+}
+
+void nametag_yellow(void) {
+	if (k_mutex_lock(&epaper_mutex, K_SECONDS(1))!=0) {
+		/* ePaper already in use, abort */
+		return;
+	}
+
+	led_color_changer(ALLYELLOW);
+	epaper_FullClear();
+	epaper_ShowFullFrame(frame3);
+	epaper_Write(_myname, strlen(_myname), 2, CENTER, 4);
+	epaper_WriteInverted(_title, strlen(_title), 11, CENTER, 2);
+	epaper_WriteInverted(_handle, strlen(_handle), 13, CENTER, 2);
+
+	k_mutex_unlock(&epaper_mutex);
 }
 
 void nametag_rainbow(void) {
+	if (k_mutex_lock(&epaper_mutex, K_SECONDS(1))!=0) {
+		/* ePaper already in use, abort */
+		return;
+	}
+
+	LOG_INF("Fetching data");
 
 	led_color_changer(RAINBOW);
 
@@ -233,9 +292,11 @@ void nametag_rainbow(void) {
 			else {
 				epaper_Write("Unknown error", 13, 14, FULL_WIDTH, 2);
 			}
+			k_mutex_unlock(&epaper_mutex);
 			return;
 		}
 	}
+	k_mutex_unlock(&epaper_mutex);
 	nametag_red();
 }
 
@@ -243,8 +304,6 @@ void button_action_work_handler(struct k_work *work) {
 	while (k_msgq_num_used_get(&button_action_msgq)) {
 		uint8_t i;
 		k_msgq_get(&button_action_msgq, &i, K_NO_WAIT);
-
-		LOG_INF("semaphore: %d", k_sem_count_get(&user_update_choice));
 
 		if (k_sem_count_get(&user_update_choice) == 0) {
 			/* Device await user response at boot time */
@@ -276,23 +335,12 @@ void button_action_work_handler(struct k_work *work) {
 					nametag_green();
 					break;
 				case 2:
-					led_color_changer(ALLBLUE);
-					epaper_FullClear();
-					epaper_ShowFullFrame(frame2);
-					epaper_WriteInverted("HELLO", 5, 2, CENTER, 2);
-					epaper_WriteInverted("my name is", 10, 4, CENTER, 1);
-					epaper_Write(_myname, strlen(_myname), 8, CENTER, 4);
+					nametag_blue();
 					break;
 				case 3:
-					led_color_changer(ALLYELLOW);
-					epaper_FullClear();
-					epaper_ShowFullFrame(frame3);
-					epaper_Write(_myname, strlen(_myname), 2, CENTER, 4);
-					epaper_WriteInverted(_title, strlen(_title), 11, CENTER, 2);
-					epaper_WriteInverted(_handle, strlen(_handle), 13, CENTER, 2);
+					nametag_yellow();
 					break;
 				case 4:
-					LOG_INF("Fetching data");
 					nametag_rainbow();
 					break;
 				default:
