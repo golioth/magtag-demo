@@ -30,7 +30,7 @@ LOG_MODULE_REGISTER(golioth_magtag, LOG_LEVEL_DBG);
 #include "magtag-common/buttons.h"
 
 /* Images for the epaper screen */
-extern const unsigned char golioth_logo[];
+#include "../golioth_nametag.h"
 #include "../frame0.h"
 #include "../frame1.h"
 #include "../frame2.h"
@@ -221,7 +221,6 @@ void nametag_rainbow(void) {
 	led_color_changer(RAINBOW);
 
 	epaper_FullClear();
-	epaper_ShowFullFrame((void *)golioth_logo);
 	epaper_Write("Fetching name from Golioth", 26, 0, FULL_WIDTH, 2);
 
 	int err;
@@ -371,10 +370,9 @@ void main(void)
 	/* buttons */
 	buttons_init(button_pressed);
 
-	epaper_init();
-	epaper_Write("Update name via Golioth?", 24, 12, FULL_WIDTH, 2);
-	epaper_Write("YES", 3, 14, 140, 2);
-	epaper_Write("NO", 2, 14, 60, 2);
+	epaper_hardware_init();
+	epaper_FullClear();
+	epaper_ShowFullFrame(golioth_nametag);
 	uint8_t default_screen = (DEFAULT_FRAME < 4 ? DEFAULT_FRAME : 0);
 
 	LOG_INF("Awaiting user choice...");
