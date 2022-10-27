@@ -60,7 +60,7 @@ static void golioth_on_connect(struct golioth_client *client)
 
 int fetch_name_from_golioth(uint8_t idx) {
 	int err = 0;
-	uint8_t row_idx = 1;
+	static uint8_t row_idx = 1;
 
 	uint8_t *dest_ptr;
 	char endpoint[16];
