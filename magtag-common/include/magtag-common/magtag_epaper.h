@@ -49,6 +49,8 @@ void EPD_2IN9D_DisplayPart(uint8_t *Image);
 void EPD_2in9D_PartialClear(void);
 void epaper_FullClear(void);
 void epaper_ShowFullFrame(const char *frame);
+void epaper_hardware_init(void);
+void epaper_show_golioth(void);
 void epaper_init(void);
 void EPD_2IN9D_Sleep(void);
 void EPD_2IN9D_PowerOff(void);
