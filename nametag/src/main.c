@@ -329,24 +329,21 @@ void button_action_work_handler(struct k_work *work) {
 		}
 
 		/* Update the ePaper frame */
-		if (k_mutex_lock(&epaper_mutex, K_SECONDS(1))==0) {
-			switch(i) {
-				case 1:
-					nametag_green();
-					break;
-				case 2:
-					nametag_blue();
-					break;
-				case 3:
-					nametag_yellow();
-					break;
-				case 4:
-					nametag_rainbow();
-					break;
-				default:
-					nametag_red();
-			}
-			k_mutex_unlock(&epaper_mutex);
+		switch(i) {
+			case 1:
+				nametag_green();
+				break;
+			case 2:
+				nametag_blue();
+				break;
+			case 3:
+				nametag_yellow();
+				break;
+			case 4:
+				nametag_rainbow();
+				break;
+			default:
+				nametag_red();
 		}
 	}
 }
