@@ -109,6 +109,42 @@ static void golioth_on_connect(struct golioth_client *client)
 	k_sem_give(&connected);
 }
 
+int process_update_and_store(char *new_data,
+		uint8_t len,
+		struct nametag_ctx ctx,
+		bool show_msgs) {
+
+	int err = 0;
+	char line_buf[32];
+	snprintk(line_buf, sizeof(line_buf), "Fetching %s... Success!", ctx.key);
+	if (show_msgs) {
+		epaper_autowrite(line_buf, strlen(line_buf));
+	}
+
+	if (strcmp(new_data, ctx.data)==0) {
+		LOG_DBG("Local data already up-to-date");
+		if (show_msgs) {
+			epaper_autowrite("No change", 9);
+		}
+	}
+	else {
+		memcpy(ctx.data, new_data, NAME_SIZE);
+
+		LOG_DBG("Saving: %s", ctx.end_p);
+		err = settings_save_one(ctx.end_p, (const void *)ctx.data, NAME_SIZE);
+		if (err) {
+			LOG_DBG("failed to write: %s %d", ctx.data, strlen(ctx.data));
+		}
+		else {
+			LOG_DBG("Saved to flash");
+			if (show_msgs) {
+				epaper_autowrite("Saved to flash", 14);
+			}
+		}
+	}
+	return err;
+}
+
 int fetch_name_from_golioth(struct nametag_ctx ctx) {
 	int err = 0;
 	static uint8_t row_idx = 1;
@@ -133,34 +169,17 @@ int fetch_name_from_golioth(struct nametag_ctx ctx) {
 		}
 
 		if (strncmp(name_update, "null", 4)==0) {
-			epaper_Write("Endpoint missing on Golioth", 27, (row_idx++)*2, FULL_WIDTH, 2);
+			epaper_autowrite("Endpoint missing on Golioth", 27);
 			LOG_INF("Endpoint doesn't exist: %s", ctx.key);
 		}
 		else {
 			/* hack to remove quotes received with JSON string */
 			name_update[len-1] = '\0';
 			LOG_INF("Received %s: %s", ctx.key, name_update+1);
-
-			if (strcmp(name_update+1, ctx.data)==0) {
-				LOG_DBG("Local data already up-to-date");
-				epaper_Write("No change", 9, (row_idx++)*2, FULL_WIDTH, 2);
-			}
-			else {
-				memcpy(ctx.data, name_update+1, NAME_SIZE);
-				char line_buf[32];
-				snprintk(line_buf, sizeof(line_buf), "Fetching %s... Success!", ctx.key);
-				epaper_Write(line_buf, strlen(line_buf), (row_idx++)*2, FULL_WIDTH, 2);
-
-				LOG_DBG("Saving: %s", ctx.end_p);
-				err = settings_save_one(ctx.end_p, (const void *)ctx.data, NAME_SIZE);
-				if (err) {
-					LOG_DBG("failed to write: %s %d", ctx.data, strlen(ctx.data));
-				}
-				else {
-					LOG_DBG("Saved to flash");
-					epaper_Write("Saved to flash", 14, (row_idx++)*2, FULL_WIDTH, 2);
-				}
-			}
+			process_update_and_store(name_update+1,
+					strlen(name_update+1),
+					ctx,
+					true);
 		}
 	}
 	return err;
@@ -340,17 +359,17 @@ void nametag_rainbow(void) {
 	led_color_changer(RAINBOW);
 
 	epaper_FullClear();
-	epaper_Write("Fetching name from Golioth", 26, 0, FULL_WIDTH, 2);
+	epaper_autowrite("Fetching name from Golioth", 26);
 
 	int err;
 	for (uint8_t i=0; i<ARRAY_SIZE(nametag_ctx_arr); i++) {
 		err = fetch_name_from_golioth(nametag_ctx_arr[i]);
 		if (err != 0) {
 			if (err == -ENETDOWN) {
-				epaper_Write("Err: Not connected to Golioth", 29, 14, FULL_WIDTH, 2);
+				epaper_autowrite("Err: Not connected to Golioth", 29);
 			}
 			else {
-				epaper_Write("Unknown error", 13, 14, FULL_WIDTH, 2);
+				epaper_autowrite("Unknown error", 13);
 			}
 			k_mutex_unlock(&epaper_mutex);
 			return;
