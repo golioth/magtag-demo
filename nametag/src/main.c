@@ -71,7 +71,18 @@ static struct golioth_client *client = GOLIOTH_SYSTEM_CLIENT_GET();
 static K_SEM_DEFINE(connected, 0, 1);
 static K_SEM_DEFINE(user_update_choice, 0, 1);
 static K_SEM_DEFINE(wifi_control, 0, 1);
+static K_SEM_DEFINE(manual_get_complete, 0, 1);
 struct k_mutex epaper_mutex;
+
+/* Prototypes */
+bool process_update_and_store(char *new_data,
+		uint8_t len,
+		struct nametag_ctx ctx,
+		bool show_msgs);
+void refresh_delay_timer_handler(struct k_timer *dummy);
+
+/* Timers */
+K_TIMER_DEFINE(refresh_delay_timer, refresh_delay_timer_handler, NULL);
 
 static int nametag_settings_set(const char *name, size_t len,
 		settings_read_cb read_cb, void *cb_arg)
@@ -104,12 +115,56 @@ struct settings_handler my_conf = {
 	.h_set = nametag_settings_set,
 };
 
+void remove_quotes(char *str_d, const char *str_s, uint8_t len_with_quotes) {
+	strcpy(str_d, str_s+1);
+	*(str_d+len_with_quotes-2) = '\0';
+}
+
+static int update_handler(struct golioth_req_rsp *rsp)
+{
+	if (!k_sem_count_get(&manual_get_complete)) {
+		/* Ignore until a manual get if finished */
+		return 0;
+	}
+
+	if (rsp->err) {
+		LOG_ERR("Error receiving LightDB State update: %d", rsp->err);
+		return rsp->err;
+	}
+
+	struct nametag_ctx *ctx = (struct nametag_ctx*)rsp->user_data;
+	LOG_HEXDUMP_INF(rsp->data, rsp->len, "Data");
+	LOG_DBG("Userdata: %s", ctx->key);
+
+	/* hacks to deal with rsp->data being wrapped in quotes */
+	char nametag_data[NAME_SIZE];
+	remove_quotes(nametag_data, rsp->data, rsp->len);
+
+	if (process_update_and_store(nametag_data, rsp->len, *ctx, false)) {
+		LOG_DBG("Successfully updated");
+		k_timer_start(&refresh_delay_timer, K_MSEC(1500), K_NO_WAIT);
+	}
+	return 0;
+}
+
 static void golioth_on_connect(struct golioth_client *client)
 {
 	k_sem_give(&connected);
+
+	int err;
+
+	for (uint8_t i=0; i<ARRAY_SIZE(nametag_ctx_arr); i++) {
+		err = golioth_lightdb_observe_cb(client, nametag_ctx_arr[i].key,
+					 GOLIOTH_CONTENT_FORMAT_APP_JSON,
+					 update_handler, &nametag_ctx_arr[i]);
+
+		if (err) {
+			LOG_WRN("failed to observe lightdb path: %d", err);
+		}
+	}
 }
 
-int process_update_and_store(char *new_data,
+bool process_update_and_store(char *new_data,
 		uint8_t len,
 		struct nametag_ctx ctx,
 		bool show_msgs) {
@@ -141,8 +196,9 @@ int process_update_and_store(char *new_data,
 				epaper_autowrite("Saved to flash", 14);
 			}
 		}
+		return true;
 	}
-	return err;
+	return false;
 }
 
 int fetch_name_from_golioth(struct nametag_ctx ctx) {
@@ -174,10 +230,12 @@ int fetch_name_from_golioth(struct nametag_ctx ctx) {
 		}
 		else {
 			/* hack to remove quotes received with JSON string */
-			name_update[len-1] = '\0';
-			LOG_INF("Received %s: %s", ctx.key, name_update+1);
-			process_update_and_store(name_update+1,
-					strlen(name_update+1),
+			char nametag_data[NAME_SIZE];
+			remove_quotes(nametag_data, name_update, len);
+
+			LOG_INF("Received %s: %s", ctx.key, nametag_data);
+			process_update_and_store(nametag_data,
+					strlen(nametag_data),
 					ctx,
 					true);
 		}
@@ -376,6 +434,7 @@ void nametag_rainbow(void) {
 		}
 	}
 	k_mutex_unlock(&epaper_mutex);
+	k_sem_give(&manual_get_complete);
 	nametag_yellow();
 }
 
@@ -474,6 +533,13 @@ void button_pressed(const struct device *dev, struct gpio_callback *cb,
 		}
 	}
 
+	k_work_submit(&button_action_work);
+}
+
+void refresh_delay_timer_handler(struct k_timer *dummy)
+{
+	uint8_t new_frame = DEFAULT_FRAME;
+	k_msgq_put(&button_action_msgq, &new_frame, K_NO_WAIT);
 	k_work_submit(&button_action_work);
 }
 
