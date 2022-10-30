@@ -810,8 +810,7 @@ void epaper_autowrite(uint8_t *str, uint8_t str_len)
         }
     }
     EPD_2IN9D_SetPartReg();
-    epaper_WriteLargeLine(str, str_len, line);
-    ++line;
+    epaper_WriteLargeLine(str, str_len, (line++)*2);
 
     EPD_2IN9D_PowerOff();
 }
