@@ -36,7 +36,7 @@ Resources
 *********
 
 * `MagTag purchase link`_
-* `MagTag stock firmware`_ 
+* `MagTag stock firmware`_
 * `MagTag schematic`_
 * `MagTag high-level pinout`_
 * `MagTag design files`_
@@ -44,33 +44,13 @@ Resources
 Build instructions
 ******************
 
-Clone this repository into your Golioth folder within the Zephyr install
-directory
+**Prerequisite:** Follow the README in the root of this repository to use ``west
+init`` to clone this repo and install Zephyr
 
-**NOTE:** Your zephyr location may be different than below, check where
-`zephyrproject` has been installed.
-
-.. code-block:: bash
-
-   ~/zephyrproject/modules/lib/golioth/samples
-   git clone git@github.com:golioth/magtag-demo.git
-
-Ensure that you have activated your virtual environment and set up the
-espressif toolchain environment variables. These can be in different places
-depending on your operating system but should look something like this:
-
-.. code-block:: bash
-
-   source ~/zephyrproject/.venv/bin/activate
-   export ESPRESSIF_TOOLCHAIN_PATH="${HOME}/.espressif/tools/zephyr/"
-   export ZEPHYR_TOOLCHAIN_VARIANT="espressif"
-
-Create a credentials file
-=========================
-
-Create a credentials file called ``credentials.conf`` that contains your
-Golioth device psk-id/psk and your WiFi SSID/password. We have included an
-example called ``credentials.conf_example`` as a starting point.
+**Prerequisite:** Create a credentials file in the root directory of this
+repository called ``credentials.conf`` that contains your Golioth device
+psk-id/psk and your WiFi SSID/password. We have included an example called
+``credentials.conf_example`` as a starting point.
 
 Here is what the contents of that file should look like.
 
@@ -81,6 +61,28 @@ Here is what the contents of that file should look like.
 
    CONFIG_ESP32_WIFI_SSID="ssid"
    CONFIG_ESP32_WIFI_PASSWORD="pw"
+
+**This app will not build without `credentials.conf` in the parent directory of
+this folder**
+
+Activate Virtual Environment
+============================
+
+.. code-block:: bash
+
+   source ~/magtag-demo/.venv/bin/activate
+
+Build and Flash
+===============
+
+.. code-block:: bash
+
+   cd ~/magtag-demo/app
+   west build -b esp32s2_saola observe -p
+   west flash --esp-device=/dev/ttyACM0
+
+Board must be manually put into DFU mode (hold boot, hit reset) before flashing
+and manually reset after flashing.
 
 Build
 =====
