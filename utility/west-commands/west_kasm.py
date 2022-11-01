@@ -7,6 +7,8 @@ from textwrap import dedent            # just for nicer code indentation
 from west.commands import WestCommand  # your extension must subclass this
 from west import log                   # use this for user output
 
+import os, time
+
 class KASM(WestCommand):
 
     def __init__(self):
@@ -42,6 +44,16 @@ class KASM(WestCommand):
 
         return parser           # gets stored as self.parser
 
+    def get_cmake_src_dir(self, build_dir):
+        with open(os.path.join(build_dir, 'CMakeCache.txt')) as f:
+            cmake_lines = f.readlines()
+        for line in cmake_lines:
+            if line.startswith("APPLICATION_SOURCE_DIR:PATH="):
+                app_path = line.split("APPLICATION_SOURCE_DIR:PATH=")[1]
+                folder = os.path.basename(app_path).strip()
+                return folder
+        return "unknown"
+
     def do_run(self, args, unknown_args):
         # This gets called when the user runs the command, e.g.:
         #
@@ -49,8 +61,6 @@ class KASM(WestCommand):
         #   --optional is FOO
         #   required is BAR
         if args.command == "download":
-            import os, time
-
             #os.path.join only works if build_dir doesn't have a leading slash
             build_dir = os.path.join(os.getcwd(), os.path.expanduser(args.build_dir))
             output_dir = os.path.join(os.getcwd(), os.path.expanduser(args.output_dir))
@@ -60,7 +70,10 @@ class KASM(WestCommand):
             if not os.path.exists(output_dir):
                 log.die('cannot find output directory: ', output_dir)
 
-            merged_filename = time.strftime('merged_%y%m%d_%H%M%S.bin', time.localtime())
+            app_name = self.get_cmake_src_dir(build_dir)
+            format_filename = 'merged_{}_%H%M%S.bin'.format(app_name)
+
+            merged_filename = time.strftime(format_filename, time.localtime())
             merged_path=os.path.join(output_dir, merged_filename)
             zephyrbin_path=os.path.join(build_dir, 'zephyr/zephyr.bin')
             bootloader_path=os.path.join(build_dir, 'esp-idf/build/bootloader/bootloader.bin')
