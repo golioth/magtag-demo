@@ -3,8 +3,8 @@ Golioth Developer Training: Blinky
 
 This demo blinks the red LED on the bottom of the board once per second.
 
-We have copied the `samples/basic/blinky`_ demo from the Zephyr repository. We have included a board
-overlay file that sets up the pin assignment. 
+We have copied the `samples/basic/blinky`_ demo from the Zephyr repository. We
+have included a board overlay file that sets up the pin assignment.
 
 Hardware: Adafruit MagTag
 *************************
@@ -18,48 +18,35 @@ Resources
 *********
 
 * `MagTag purchase link`_
-* `MagTag stock firmware`_ 
+* `MagTag stock firmware`_
 * `MagTag schematic`_
 * `MagTag high-level pinout`_
 * `MagTag design files`_
 
-
 Build instructions
 ******************
 
-Clone this repository into your Golioth folder within the Zephyr install
-directory
+**Prerequisite:** Follow the README in the root of this repository to use ``west
+init`` to clone this repo and install Zephyr
 
-**NOTE:** Your zephyr location may be different than below, check where
-`zephyrproject` has been installed.
-
-.. code-block:: bash
-
-   ~/zephyrproject/modules/lib/golioth/samples
-   git clone git@github.com:golioth/magtag-demo.git
-
-Ensure that you have activated your virtual environment and set up the
-espressif toolchain environment variables. These can be in different places
-depending on your operating system but should look something like this:
+Activate Virtual Environment
+============================
 
 .. code-block:: bash
 
-   source ~/zephyrproject/.venv/bin/activate
-   export ESPRESSIF_TOOLCHAIN_PATH="${HOME}/.espressif/tools/zephyr/"
-   export ZEPHYR_TOOLCHAIN_VARIANT="espressif"
+   source ~/magtag-demo/.venv/bin/activate
 
-Build
-=====
+Build and Flash
+===============
 
-``west build -b esp32s2_saola . -p``
+.. code-block:: bash
 
-Flash
-=====
+   cd ~/magtag-demo/app
+   west build -b esp32s2_saola blinky -p
+   west flash --esp-device=/dev/ttyACM0
 
-``west flash --esp-device=/dev/ttyACM0``
-
-Board must be manually put into DFU mode (hold boot, hit reset) and manually
-reset after flashing.
+Board must be manually put into DFU mode (hold boot, hit reset) before flashing
+and manually reset after flashing.
 
 .. _samples/basic/blinky: https://github.com/zephyrproject-rtos/zephyr/tree/main/samples/basic/blinky
 .. _Adafruit MagTag board: https://learn.adafruit.com/adafruit-magtag
