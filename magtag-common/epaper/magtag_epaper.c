@@ -48,8 +48,8 @@ bool _display_asleep = true;
 #include "ubuntu_monospaced_bold_19x32.h"
 
 struct font_meta font_6x8 = { font6x8, 6, 1, false };
-struct font_meta font_10x16 = { u_mono_bold_10x16, 10, 2, false };
-struct font_meta font_19x32 = { u_mono_bold_19x32, 19, 4, false };
+struct font_meta font_10x16 = { (const char *)u_mono_bold_10x16, 10, 2, false };
+struct font_meta font_19x32 = { (const char *)u_mono_bold_19x32, 19, 4, false };
 
 /**
  * partial screen update LUT
@@ -402,9 +402,9 @@ void epaper_ShowFullFrame(const char *frame) {
         EPD_2IN9D_Init();
         EPD_2IN9D_SetPartReg();
     }
-    EPD_2IN9D_Display((char *)frame);
+    EPD_2IN9D_Display((unsigned char *)frame);
     EPD_2IN9D_Refresh();
-    EPD_2IN9D_Display((char *)frame);
+    EPD_2IN9D_Display((unsigned char *)frame);
     EPD_2IN9D_SetPartReg();
     EPD_2IN9D_PowerOff();
 }
