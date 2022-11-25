@@ -35,27 +35,19 @@
 #include <stdio.h>
 #include <zephyr/kernel.h>
 
-#define USE_DEBUG 0
-#if USE_DEBUG
-   #define Debug(__info) printk(__info)
-#else
-   #define Debug(__info)
-#endif
-
-/**
- * data
-**/
-#define UBYTE   uint8_t
-#define UWORD   uint16_t
-#define UDOUBLE uint32_t
-
 /**
  * Logging
  **/
+#define EPAPER_LOG_LEVEL   LOG_LEVEL_DBG
 #define EPAPER_LOG_ERR(...)    Z_LOG(LOG_LEVEL_ERR, __VA_ARGS__)
 #define EPAPER_LOG_WRN(...)    Z_LOG(LOG_LEVEL_WRN, __VA_ARGS__)
 #define EPAPER_LOG_INF(...)    Z_LOG(LOG_LEVEL_INF, __VA_ARGS__)
 #define EPAPER_LOG_DBG(...)    Z_LOG(LOG_LEVEL_DBG, __VA_ARGS__)
+
+/**
+ * delay x ms
+**/
+#define DEV_Delay_ms(__xms) k_msleep(__xms)
 
 /**
  * GPIO config
@@ -75,18 +67,10 @@
 /**
  * GPIO read and write
 **/
-// #define DEV_Digital_Write(_pin, _value) digitalWrite(_pin, _value == 0? LOW:HIGH)
-// #define DEV_Digital_Read(_pin) digitalRead(_pin)
-void DEV_Digital_Write(uint8_t pin, uint8_t value);
-uint8_t DEV_Digital_Read(uint8_t pin);
 
-/**
- * delay x ms
-**/
-#define DEV_Delay_ms(__xms) k_msleep(__xms)
-
-/*------------------------------------------------------------------------------------------------------*/
-UBYTE DEV_Module_Init(void);
-void DEV_SPI_WriteByte(UBYTE data);
+uint8_t epaper_hal_digital_read(uint8_t pin);
+void epaper_hal_digital_write(uint8_t pin, uint8_t value);
+void epaper_hal_setup_hardware(void);
+void epaper_hal_spi_writebyte(uint8_t data);
 
 #endif

@@ -112,9 +112,9 @@ parameter:
 ******************************************************************************/
 void EPD_2IN9D_Reset(void)
 {
-    DEV_Digital_Write(EPD_RST_PIN, 0);
+    epaper_hal_digital_write(EPD_RST_PIN, 0);
     DEV_Delay_ms(10);
-    DEV_Digital_Write(EPD_RST_PIN, 1);
+    epaper_hal_digital_write(EPD_RST_PIN, 1);
     DEV_Delay_ms(10);
     _display_asleep = false;
 }
@@ -126,10 +126,10 @@ parameter:
 ******************************************************************************/
 void EPD_2IN9D_SendCommand(uint8_t Reg)
 {
-    DEV_Digital_Write(EPD_DC_PIN, 0);
-    DEV_Digital_Write(EPD_CS_PIN, 0);
-    DEV_SPI_WriteByte(Reg);
-    DEV_Digital_Write(EPD_CS_PIN, 1);
+    epaper_hal_digital_write(EPD_DC_PIN, 0);
+    epaper_hal_digital_write(EPD_CS_PIN, 0);
+    epaper_hal_spi_writebyte(Reg);
+    epaper_hal_digital_write(EPD_CS_PIN, 1);
 }
 
 /******************************************************************************
@@ -139,10 +139,10 @@ parameter:
 ******************************************************************************/
 void EPD_2IN9D_SendData(uint8_t Data)
 {
-    DEV_Digital_Write(EPD_DC_PIN, 1);
-    DEV_Digital_Write(EPD_CS_PIN, 0);
-    DEV_SPI_WriteByte(Data);
-    DEV_Digital_Write(EPD_CS_PIN, 1);
+    epaper_hal_digital_write(EPD_DC_PIN, 1);
+    epaper_hal_digital_write(EPD_CS_PIN, 0);
+    epaper_hal_spi_writebyte(Data);
+    epaper_hal_digital_write(EPD_CS_PIN, 1);
 }
 
 /******************************************************************************
@@ -155,7 +155,7 @@ void EPD_2IN9D_ReadBusy(void)
     uint8_t busy;
     do {
         EPD_2IN9D_SendCommand(0x71);
-        busy = DEV_Digital_Read(EPD_BUSY_PIN);
+        busy = epaper_hal_digital_read(EPD_BUSY_PIN);
         busy =!(busy & 0x01);
                 DEV_Delay_ms(20);
     } while(busy);
@@ -392,7 +392,7 @@ void epaper_ShowFullFrame(const char *frame) {
 void epaper_hardware_init(void) {
     _display_asleep = true;
     EPAPER_LOG_INF("Setup ePaper pins");
-    DEV_Module_Init();
+    epaper_hal_setup_hardware();
 }
 
 void epaper_show_golioth(void) {
