@@ -102,7 +102,28 @@ const unsigned char EPD_2IN9D_lut_bb1[] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 };
 
-bool EPD_2IN9D_IsAsleep(void) {
+/* Private Function Prototypes */
+static bool EPD_2IN9D_IsAsleep(void);
+static void EPD_2IN9D_Reset(void);
+static void EPD_2IN9D_SendCommand(uint8_t Reg);
+static void EPD_2IN9D_SendData(uint8_t Data);
+static void EPD_2IN9D_ReadBusy(void);
+static void EPD_2IN9D_SetPartReg(void);
+static void EPD_2IN9D_Refresh(void);
+static void EPD_2IN9D_Init(void);
+static void EPD_2IN9D_SendRepeatedBytePattern(uint8_t byte_pattern, uint16_t how_many);
+static void EPD_2IN9D_SendPartialAddr(uint16_t x, uint16_t y, uint16_t w, uint16_t h);
+static void EPD_2IN9D_SendPartialLineAddr(uint8_t line);
+static void EPD_2IN9D_Clear(void);
+static void EPD_2IN9D_Display(uint8_t *Image);
+static void EPD_2IN9D_DisplayPart(uint8_t *Image);
+static void EPD_2in9D_PartialClear(void);
+static void EPD_2IN9D_Sleep(void);
+static void EPD_2IN9D_PowerOff(void);
+static void double_invert(uint8_t orig_column, uint8_t return_cols[2]);
+
+
+static bool EPD_2IN9D_IsAsleep(void) {
     return _display_asleep;
 }
 
@@ -110,7 +131,7 @@ bool EPD_2IN9D_IsAsleep(void) {
 function : Software reset
 parameter:
 ******************************************************************************/
-void EPD_2IN9D_Reset(void)
+static void EPD_2IN9D_Reset(void)
 {
     epaper_hal_digital_write(EPD_RST_PIN, 0);
     epaper_delay_ms(10);
@@ -124,7 +145,7 @@ function : Send command
 parameter:
      Reg : Command register
 ******************************************************************************/
-void EPD_2IN9D_SendCommand(uint8_t Reg)
+static void EPD_2IN9D_SendCommand(uint8_t Reg)
 {
     epaper_hal_digital_write(EPD_DC_PIN, 0);
     epaper_hal_digital_write(EPD_CS_PIN, 0);
@@ -137,7 +158,7 @@ function : Send data
 parameter:
     Data : Write data
 ******************************************************************************/
-void EPD_2IN9D_SendData(uint8_t Data)
+static void EPD_2IN9D_SendData(uint8_t Data)
 {
     epaper_hal_digital_write(EPD_DC_PIN, 1);
     epaper_hal_digital_write(EPD_CS_PIN, 0);
@@ -149,7 +170,7 @@ void EPD_2IN9D_SendData(uint8_t Data)
 function : Wait until the busy_pin goes LOW
 parameter:
 ******************************************************************************/
-void EPD_2IN9D_ReadBusy(void)
+static void EPD_2IN9D_ReadBusy(void)
 {
     EPAPER_LOG_DBG("e-Paper busy");
     uint8_t busy;
@@ -167,7 +188,7 @@ void EPD_2IN9D_ReadBusy(void)
 function : LUT download
 parameter:
 ******************************************************************************/
-void EPD_2IN9D_SetPartReg(void)
+static void EPD_2IN9D_SetPartReg(void)
 {
     EPD_2IN9D_SendCommand(0x01); //POWER SETTING
     EPD_2IN9D_SendData(0x03);
@@ -232,7 +253,7 @@ void EPD_2IN9D_SetPartReg(void)
 function : Turn On Display
 parameter:
 ******************************************************************************/
-void EPD_2IN9D_Refresh(void)
+static void EPD_2IN9D_Refresh(void)
 {
     EPD_2IN9D_SendCommand(0x12); //DISPLAY REFRESH
     epaper_delay_ms(1); //!!!The delay here is necessary, 200uS at least!!!
@@ -244,7 +265,7 @@ void EPD_2IN9D_Refresh(void)
 function : Initialize the e-Paper register
 parameter:
 ******************************************************************************/
-void EPD_2IN9D_Init(void)
+static void EPD_2IN9D_Init(void)
 {
     if (_display_asleep) { EPD_2IN9D_Reset(); }
     EPD_2IN9D_SendCommand(0x00); //panel setting
@@ -258,13 +279,13 @@ void EPD_2IN9D_Init(void)
 }
 
 
-void EPD_2IN9D_SendRepeatedBytePattern(uint8_t byte_pattern, uint16_t how_many) {
+static void EPD_2IN9D_SendRepeatedBytePattern(uint8_t byte_pattern, uint16_t how_many) {
     for (uint16_t i = 0; i < how_many; i++) {
         EPD_2IN9D_SendData(byte_pattern);
     }
 }
 
-void EPD_2IN9D_SendPartialAddr(uint16_t x, uint16_t y, uint16_t w, uint16_t h) {
+static void EPD_2IN9D_SendPartialAddr(uint16_t x, uint16_t y, uint16_t w, uint16_t h) {
     EPD_2IN9D_SendCommand(0x90); //resolution setting
     EPD_2IN9D_SendData(x); //x-start
     EPD_2IN9D_SendData(x+w - 1); //x-end
@@ -276,7 +297,7 @@ void EPD_2IN9D_SendPartialAddr(uint16_t x, uint16_t y, uint16_t w, uint16_t h) {
     EPD_2IN9D_SendData(0x01);
 }
 
-void EPD_2IN9D_SendPartialLineAddr(uint8_t line) {
+static void EPD_2IN9D_SendPartialLineAddr(uint8_t line) {
     EPD_2IN9D_SendCommand(0x90); //resolution setting
     EPD_2IN9D_SendData(line*16); //x-start
     EPD_2IN9D_SendData((line*16)+16 - 1); //x-end
@@ -292,7 +313,7 @@ void EPD_2IN9D_SendPartialLineAddr(uint8_t line) {
 function : Clear screen
 parameter:
 ******************************************************************************/
-void EPD_2IN9D_Clear(void)
+static void EPD_2IN9D_Clear(void)
 {
     uint16_t Width, Height;
     Width = (EPD_2IN9D_WIDTH % 8 == 0)? (EPD_2IN9D_WIDTH / 8 ): (EPD_2IN9D_WIDTH / 8 + 1);
@@ -314,7 +335,7 @@ void EPD_2IN9D_Clear(void)
 function : Sends the image buffer in RAM to e-Paper and displays
 parameter:
 ******************************************************************************/
-void EPD_2IN9D_Display(uint8_t *Image)
+static void EPD_2IN9D_Display(uint8_t *Image)
 {
     uint16_t Width, Height;
     Width = (EPD_2IN9D_WIDTH % 8 == 0)? (EPD_2IN9D_WIDTH / 8 ): (EPD_2IN9D_WIDTH / 8 + 1);
@@ -332,7 +353,7 @@ void EPD_2IN9D_Display(uint8_t *Image)
 function : Sends the image buffer in RAM to e-Paper and displays
 parameter:
 ******************************************************************************/
-void EPD_2IN9D_DisplayPart(uint8_t *Image)
+static void EPD_2IN9D_DisplayPart(uint8_t *Image)
 {
     /* Set partial Windows */
     EPD_2IN9D_SetPartReg();
@@ -419,7 +440,7 @@ void epaper_init(void) {
 function :        Enter power off mode
 parameter:
 ******************************************************************************/
-void EPD_2IN9D_PowerOff(void)
+static void EPD_2IN9D_PowerOff(void)
 {
     EPD_2IN9D_SendCommand(0X50);
     EPD_2IN9D_SendData(0xf7);
@@ -432,7 +453,7 @@ void EPD_2IN9D_PowerOff(void)
 function :        Enter deep sleep mode
 parameter:
 ******************************************************************************/
-void EPD_2IN9D_Sleep(void)
+static void EPD_2IN9D_Sleep(void)
 {
     EPD_2IN9D_SendCommand(0X50);
     EPD_2IN9D_SendData(0xf7);
@@ -451,7 +472,7 @@ void EPD_2IN9D_Sleep(void)
  * @param orig_column   Font column input
  * @param return_cols   Two-byte array to store the results
  */
-void double_invert(uint8_t orig_column, uint8_t return_cols[2]) {
+static void double_invert(uint8_t orig_column, uint8_t return_cols[2]) {
     // Double the pixesl, the flip endianness and invert
     uint8_t upper_column = 0;
     uint8_t lower_column = 0;
