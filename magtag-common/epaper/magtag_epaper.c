@@ -117,8 +117,8 @@ static void EPD_2IN9D_Clear(void);
 static void EPD_2IN9D_Display(uint8_t *Image);
 static void EPD_2IN9D_DisplayPart(uint8_t *Image);
 static void EPD_2in9D_PartialClear(void);
-static void EPD_2IN9D_Sleep(void);
-static void EPD_2IN9D_PowerOff(void);
+static void EPD_2IN9D_DeepSleep(void);
+static void EPD_2IN9D_Standby(void);
 static void double_invert(uint8_t orig_column, uint8_t return_cols[2]);
 
 
@@ -394,7 +394,7 @@ void EPD_2in9D_PartialClear(void) {
 void epaper_FullClear(void) {
     EPD_2IN9D_Init();
     EPD_2IN9D_Clear();
-    EPD_2IN9D_PowerOff();
+    EPD_2IN9D_Standby();
 }
 
 void epaper_ShowFullFrame(const char *frame) {
@@ -406,7 +406,7 @@ void epaper_ShowFullFrame(const char *frame) {
     EPD_2IN9D_Refresh();
     EPD_2IN9D_Display((unsigned char *)frame);
     EPD_2IN9D_SetPartReg();
-    EPD_2IN9D_PowerOff();
+    EPD_2IN9D_Standby();
 }
 
 void epaper_hardware_init(void) {
@@ -419,7 +419,7 @@ void epaper_show_golioth(void) {
     EPD_2IN9D_Init();
     EPAPER_LOG_INF("Show Golioth logo");
     epaper_ShowFullFrame((void *)golioth_logo); /* cast because function is not expecting a CONST array) */
-    EPD_2IN9D_PowerOff();
+    EPD_2IN9D_Standby();
 }
 
 /**
@@ -439,7 +439,7 @@ void epaper_init(void) {
 function :        Enter power off mode
 parameter:
 ******************************************************************************/
-static void EPD_2IN9D_PowerOff(void)
+static void EPD_2IN9D_Standby(void)
 {
     EPD_2IN9D_SendCommand(0X50);
     EPD_2IN9D_SendData(0xf7);
@@ -452,7 +452,7 @@ static void EPD_2IN9D_PowerOff(void)
 function :        Enter deep sleep mode
 parameter:
 ******************************************************************************/
-static void EPD_2IN9D_Sleep(void)
+static void EPD_2IN9D_DeepSleep(void)
 {
     EPD_2IN9D_SendCommand(0X50);
     EPD_2IN9D_SendData(0xf7);
@@ -744,7 +744,7 @@ void epaper_Write(uint8_t *str, uint8_t str_len, uint8_t line, int16_t x_left, u
     EPD_2IN9D_Init();
     EPD_2IN9D_SetPartReg();
     epaper_WriteString(str, str_len, line, x_left, font_m);
-    EPD_2IN9D_PowerOff();
+    EPD_2IN9D_Standby();
 }
 
 /**
@@ -838,7 +838,7 @@ void epaper_autowrite(uint8_t *str, uint8_t str_len)
     EPD_2IN9D_SetPartReg();
     epaper_WriteLargeLine(str, str_len, (line++)*2);
 
-    EPD_2IN9D_PowerOff();
+    EPD_2IN9D_Standby();
 }
 
 
