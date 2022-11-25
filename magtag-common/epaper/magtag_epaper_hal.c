@@ -30,8 +30,14 @@
 #include "magtag_epaper_hal.h"
 #include <zephyr/device.h>
 #include <zephyr/drivers/gpio.h>
-#include <zephyr/logging/log.h>
-LOG_MODULE_REGISTER(epaper_driver_dev, LOG_LEVEL_DBG);
+
+/**
+ * There's no way around this Zephyr-specific log register. This ifdef statement
+ * tests for the following symbol: CONFIG_KERNEL_BIN_NAME="zephyr"
+ **/
+#ifdef CONFIG_KERNEL_BIN_NAME
+	LOG_MODULE_REGISTER(epaper_driver_dev, LOG_LEVEL_DBG);
+#endif
 
 /*
  * Get busy pin configuration from the devicetree
@@ -76,51 +82,51 @@ void GPIO_Config(void)
 
 	ret = gpio_pin_configure_dt(&busy, GPIO_INPUT);
 	if (ret != 0) {
-		LOG_INF("Error %d: failed to configure %s pin %d",
+		EPAPER_LOG_ERR("Error %d: failed to configure %s pin %d",
 		       ret, busy.port->name, busy.pin);
 		return;
 	} else {
-		LOG_INF("Set up %s pin %d as busy", busy.port->name, busy.pin);
+		EPAPER_LOG_INF("Set up %s pin %d as busy", busy.port->name, busy.pin);
 	}
 
 	ret = gpio_pin_configure_dt(&dc, GPIO_OUTPUT);
 	if (ret != 0) {
-		LOG_INF("Error %d: failed to configure %s pin %d",
+		EPAPER_LOG_ERR("Error %d: failed to configure %s pin %d",
 				ret, dc.port->name, dc.pin);
 		dc.port = NULL;
 	} else {
-		LOG_INF("Set up %s pin %d as dc", dc.port->name, dc.pin);
+		EPAPER_LOG_INF("Set up %s pin %d as dc", dc.port->name, dc.pin);
 	}
 	ret = gpio_pin_configure_dt(&rst, GPIO_OUTPUT);
 	if (ret != 0) {
-		LOG_INF("Error %d: failed to configure %s pin %d",
+		EPAPER_LOG_ERR("Error %d: failed to configure %s pin %d",
 				ret, rst.port->name, rst.pin);
 		rst.port = NULL;
 	} else {
-		LOG_INF("Set up %s pin %d as rst", rst.port->name, rst.pin);
+		EPAPER_LOG_INF("Set up %s pin %d as rst", rst.port->name, rst.pin);
 	}
 
    
     ret = gpio_pin_configure_dt(&mosi, GPIO_OUTPUT);
 	if (ret != 0) {
-		LOG_INF("Error %d: failed to configure %s pin %d",
+		EPAPER_LOG_ERR("Error %d: failed to configure %s pin %d",
 				ret, mosi.port->name, mosi.pin);
 	} else {
-		LOG_INF("Set up %s pin %d as mosi", mosi.port->name, mosi.pin);
+		EPAPER_LOG_INF("Set up %s pin %d as mosi", mosi.port->name, mosi.pin);
 	}
 	ret = gpio_pin_configure_dt(&sclk, GPIO_OUTPUT);
 	if (ret != 0) {
-		LOG_INF("Error %d: failed to configure %s pin %d",
+		EPAPER_LOG_ERR("Error %d: failed to configure %s pin %d",
 				ret, sclk.port->name, sclk.pin);
 	} else {
-		LOG_INF("Set up %s pin %d as sclk", sclk.port->name, sclk.pin);
+		EPAPER_LOG_INF("Set up %s pin %d as sclk", sclk.port->name, sclk.pin);
 	}
     ret = gpio_pin_configure_dt(&csel, GPIO_OUTPUT);
 	if (ret != 0) {
-		LOG_INF("Error %d: failed to configure %s pin %d",
+		EPAPER_LOG_ERR("Error %d: failed to configure %s pin %d",
 				ret, csel.port->name, csel.pin);
 	} else {
-		LOG_INF("Set up %s pin %d as csel", csel.port->name, csel.pin);
+		EPAPER_LOG_INF("Set up %s pin %d as csel", csel.port->name, csel.pin);
 	}
 
     gpio_pin_set_dt(&csel, HIGH);

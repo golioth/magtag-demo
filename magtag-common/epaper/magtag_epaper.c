@@ -30,8 +30,14 @@
 #include "magtag-common/magtag_epaper.h"
 #include "magtag_epaper_hal.h"
 #include "GoliothLogo.h"
-#include <zephyr/logging/log.h>
-LOG_MODULE_REGISTER(golioth_epaper, LOG_LEVEL_DBG);
+
+/**
+ * There's no way around this Zephyr-specific log register. This ifdef statement
+ * tests for the following symbol: CONFIG_KERNEL_BIN_NAME="zephyr"
+ **/
+#ifdef CONFIG_KERNEL_BIN_NAME
+    LOG_MODULE_REGISTER(golioth_epaper, EPAPER_LOG_LEVEL);
+#endif
 
 bool _display_asleep = true;
 
@@ -145,7 +151,7 @@ parameter:
 ******************************************************************************/
 void EPD_2IN9D_ReadBusy(void)
 {
-    Debug("e-Paper busy\r\n");
+    EPAPER_LOG_DBG("e-Paper busy");
     uint8_t busy;
     do {
         EPD_2IN9D_SendCommand(0x71);
@@ -154,7 +160,7 @@ void EPD_2IN9D_ReadBusy(void)
                 DEV_Delay_ms(20);
     } while(busy);
     DEV_Delay_ms(20);
-    Debug("e-Paper busy release\r\n");
+    EPAPER_LOG_DBG("e-Paper busy release");
 }
 
 /******************************************************************************
@@ -385,13 +391,13 @@ void epaper_ShowFullFrame(const char *frame) {
 
 void epaper_hardware_init(void) {
     _display_asleep = true;
-    LOG_INF("Setup ePaper pins");
+    EPAPER_LOG_INF("Setup ePaper pins");
     DEV_Module_Init();
 }
 
 void epaper_show_golioth(void) {
     EPD_2IN9D_Init();
-    LOG_INF("Show Golioth logo");
+    EPAPER_LOG_INF("Show Golioth logo");
     epaper_ShowFullFrame((void *)golioth_logo); /* cast because function is not expecting a CONST array) */
     EPD_2IN9D_PowerOff();
 }
@@ -403,7 +409,7 @@ void epaper_show_golioth(void) {
  */
 void epaper_init(void) {
     epaper_hardware_init();
-    LOG_INF("ePaper Init and Clear");
+    EPAPER_LOG_INF("ePaper Init and Clear");
     EPD_2IN9D_Init();
     EPD_2IN9D_Clear();
     epaper_show_golioth();
@@ -624,7 +630,7 @@ void epaper_WriteString(uint8_t *str,
     uint16_t col_start;
     uint16_t col_width;
     if (x_left < -2) {
-        LOG_ERR("Unrecognized x_left value: %d", x_left);
+        EPAPER_LOG_ERR("Unrecognized x_left value: %d", x_left);
         return;
     }
     else if (x_left == FULL_WIDTH) {
@@ -693,7 +699,7 @@ struct font_meta* get_font_meta(uint8_t linesize) {
         case 4:
             return &font_19x32;
         default:
-            LOG_ERR("Unsupported font height: %d", linesize);
+            EPAPER_LOG_ERR("Unsupported font height: %d", linesize);
             return 0;
     }
 }

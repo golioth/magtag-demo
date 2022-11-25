@@ -30,6 +30,7 @@
 #ifndef _EPAPER_HAL_CONFIG_H_
 #define _EPAPER_HAL_CONFIG_H_
 
+#include <zephyr/logging/log.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <zephyr/kernel.h>
@@ -47,6 +48,14 @@
 #define UBYTE   uint8_t
 #define UWORD   uint16_t
 #define UDOUBLE uint32_t
+
+/**
+ * Logging
+ **/
+#define EPAPER_LOG_ERR(...)    Z_LOG(LOG_LEVEL_ERR, __VA_ARGS__)
+#define EPAPER_LOG_WRN(...)    Z_LOG(LOG_LEVEL_WRN, __VA_ARGS__)
+#define EPAPER_LOG_INF(...)    Z_LOG(LOG_LEVEL_INF, __VA_ARGS__)
+#define EPAPER_LOG_DBG(...)    Z_LOG(LOG_LEVEL_DBG, __VA_ARGS__)
 
 /**
  * GPIO config
