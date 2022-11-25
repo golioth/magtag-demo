@@ -113,9 +113,9 @@ parameter:
 void EPD_2IN9D_Reset(void)
 {
     epaper_hal_digital_write(EPD_RST_PIN, 0);
-    DEV_Delay_ms(10);
+    epaper_delay_ms(10);
     epaper_hal_digital_write(EPD_RST_PIN, 1);
-    DEV_Delay_ms(10);
+    epaper_delay_ms(10);
     _display_asleep = false;
 }
 
@@ -157,9 +157,9 @@ void EPD_2IN9D_ReadBusy(void)
         EPD_2IN9D_SendCommand(0x71);
         busy = epaper_hal_digital_read(EPD_BUSY_PIN);
         busy =!(busy & 0x01);
-                DEV_Delay_ms(20);
+                epaper_delay_ms(20);
     } while(busy);
-    DEV_Delay_ms(20);
+    epaper_delay_ms(20);
     EPAPER_LOG_DBG("e-Paper busy release");
 }
 
@@ -235,7 +235,7 @@ parameter:
 void EPD_2IN9D_Refresh(void)
 {
     EPD_2IN9D_SendCommand(0x12); //DISPLAY REFRESH
-    DEV_Delay_ms(1); //!!!The delay here is necessary, 200uS at least!!!
+    epaper_delay_ms(1); //!!!The delay here is necessary, 200uS at least!!!
 
     EPD_2IN9D_ReadBusy();
 }

@@ -47,7 +47,7 @@
 /**
  * delay x ms
 **/
-#define DEV_Delay_ms(__xms) k_msleep(__xms)
+#define epaper_delay_ms(__xms) k_msleep(__xms)
 
 /**
  * GPIO config
