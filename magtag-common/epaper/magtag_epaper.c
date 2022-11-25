@@ -27,7 +27,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "magtag-common/magtag_epaper.h"
 #include "magtag_epaper_hal.h"
 #include "GoliothLogo.h"
 

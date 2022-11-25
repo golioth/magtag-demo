@@ -30,6 +30,9 @@
 #ifndef _EPAPER_HAL_CONFIG_H_
 #define _EPAPER_HAL_CONFIG_H_
 
+/* magtag_epaper.h is required; specify it's location here */
+#include "magtag-common/magtag_epaper.h"
+
 #include <zephyr/logging/log.h>
 #include <stdint.h>
 #include <stdio.h>
