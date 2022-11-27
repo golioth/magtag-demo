@@ -36,6 +36,10 @@ void epaper_init(void);
 void epaper_initialize_hal(void);
 
 void epaper_full_clear(void);
+void epaper_standby(void);
+void epaper_deep_sleep(void);
+bool epaper_is_asleep(void);
+
 void epaper_show_golioth(void);
 void epaper_show_full_frame(const char *frame);
 

@@ -397,6 +397,18 @@ void epaper_full_clear(void) {
     EPD_2IN9D_Standby();
 }
 
+void epaper_standby(void) {
+    EPD_2IN9D_Standby();
+}
+
+void epaper_deep_sleep(void) {
+    EPD_2IN9D_DeepSleep();
+}
+
+bool epaper_is_asleep(void) {
+    return EPD_2IN9D_IsAsleep();
+}
+
 void epaper_show_full_frame(const char *frame) {
     if (_display_asleep) {
         EPD_2IN9D_Init();
