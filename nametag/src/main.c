@@ -220,7 +220,7 @@ int fetch_name_from_golioth(struct nametag_ctx ctx) {
 
 		if (err) {
 			LOG_ERR("Unable to fetch name information from Golioth: %d", err);
-			epaper_Write("Unable to fetch", 15, (row_idx++)*2, FULL_WIDTH, 2);
+			epaper_write("Unable to fetch", 15, (row_idx++)*2, FULL_WIDTH, 2);
 			return err;
 		}
 
@@ -292,11 +292,11 @@ void nametag_blue(void) {
 	}
 
 	led_color_changer(ALLBLUE);
-	epaper_FullClear();
-	epaper_ShowFullFrame(frame2);
-	epaper_WriteInverted("HELLO", 5, 2, CENTER, 2);
-	epaper_WriteInverted("my name is", 10, 4, CENTER, 1);
-	epaper_Write(_myname, strlen(_myname), 8, CENTER, 4);
+	epaper_full_clear();
+	epaper_show_full_frame(frame2);
+	epaper_write_inverted("HELLO", 5, 2, CENTER, 2);
+	epaper_write_inverted("my name is", 10, 4, CENTER, 1);
+	epaper_write(_myname, strlen(_myname), 8, CENTER, 4);
 
 	k_mutex_unlock(&epaper_mutex);
 }
@@ -309,8 +309,8 @@ void nametag_green(void) {
 
 	led_color_changer(ALLGREEN);
 
-	epaper_FullClear();
-	epaper_ShowFullFrame(frame1);
+	epaper_full_clear();
+	epaper_show_full_frame(frame1);
 
 	char firstname[20] = " ";
 	char lastname[20] = " ";
@@ -343,8 +343,8 @@ void nametag_green(void) {
 		}
 		++iter;
 	}
-	epaper_Write(firstname, strlen(firstname), 5, 216, 4);
-	epaper_Write(lastname, strlen(lastname), 10, 216, 4);
+	epaper_write(firstname, strlen(firstname), 5, 216, 4);
+	epaper_write(lastname, strlen(lastname), 10, 216, 4);
 
 	k_mutex_unlock(&epaper_mutex);
 }
@@ -357,11 +357,11 @@ void nametag_red(void) {
 
 	led_color_changer(ALLRED);
 
-	epaper_FullClear();
-	epaper_ShowFullFrame(frame0);
-	epaper_Write(_title, strlen(_title), 1, 284, 2);
-	epaper_Write(_myname, strlen(_myname), 6, CENTER, 4);
-	epaper_Write(_handle, strlen(_handle), 13, 204, 2);
+	epaper_full_clear();
+	epaper_show_full_frame(frame0);
+	epaper_write(_title, strlen(_title), 1, 284, 2);
+	epaper_write(_myname, strlen(_myname), 6, CENTER, 4);
+	epaper_write(_handle, strlen(_handle), 13, 204, 2);
 
 	k_mutex_unlock(&epaper_mutex);
 }
@@ -376,16 +376,16 @@ void nametag_training_challenge(void) {
 	}
 
 	/* Perform a full-refresh on the display */
-	epaper_FullClear();
+	epaper_full_clear();
 
 	/* Use a partial write to draw the background */
 	/* Change frame3 to the name of your array */
-	epaper_ShowFullFrame(frame3);
+	epaper_show_full_frame(frame3);
 
 	/* Write text on top of the background */
-	epaper_Write(_myname, strlen(_myname), 2, CENTER, 4);
-	epaper_WriteInverted(_title, strlen(_title), 11, CENTER, 2);
-	epaper_WriteInverted(_handle, strlen(_handle), 13, CENTER, 2);
+	epaper_write(_myname, strlen(_myname), 2, CENTER, 4);
+	epaper_write_inverted(_title, strlen(_title), 11, CENTER, 2);
+	epaper_write_inverted(_handle, strlen(_handle), 13, CENTER, 2);
 
 	k_mutex_unlock(&epaper_mutex);
 }
@@ -397,11 +397,11 @@ void nametag_yellow(void) {
 	}
 
 	led_color_changer(ALLYELLOW);
-	epaper_FullClear();
-	epaper_ShowFullFrame(frame3);
-	epaper_Write(_myname, strlen(_myname), 2, CENTER, 4);
-	epaper_WriteInverted(_title, strlen(_title), 11, CENTER, 2);
-	epaper_WriteInverted(_handle, strlen(_handle), 13, CENTER, 2);
+	epaper_full_clear();
+	epaper_show_full_frame(frame3);
+	epaper_write(_myname, strlen(_myname), 2, CENTER, 4);
+	epaper_write_inverted(_title, strlen(_title), 11, CENTER, 2);
+	epaper_write_inverted(_handle, strlen(_handle), 13, CENTER, 2);
 
 	k_mutex_unlock(&epaper_mutex);
 }
@@ -416,7 +416,7 @@ void nametag_rainbow(void) {
 
 	led_color_changer(RAINBOW);
 
-	epaper_FullClear();
+	epaper_full_clear();
 	epaper_autowrite("Fetching name from Golioth", 26);
 
 	int err;
@@ -454,7 +454,7 @@ void button_action_work_handler(struct k_work *work) {
 				LOG_INF("User chose: Yes");
 				led_color_changer(RAINBOW);
 				if (k_mutex_lock(&epaper_mutex, K_SECONDS(1))==0) {
-					epaper_Write("Starting WiFi...", 16, 0, 160, 2);
+					epaper_write("Starting WiFi...", 16, 0, 160, 2);
 					k_mutex_unlock(&epaper_mutex);
 				}
 				k_sem_give(&wifi_control);
@@ -573,8 +573,8 @@ void main(void)
 	buttons_init(button_pressed);
 
 	epaper_init();
-	epaper_FullClear();
-	epaper_ShowFullFrame(golioth_nametag);
+	epaper_full_clear();
+	epaper_show_full_frame(golioth_nametag);
 	uint8_t default_screen = (DEFAULT_FRAME < 4 ? DEFAULT_FRAME : 0);
 
 	LOG_INF("Awaiting user choice...");

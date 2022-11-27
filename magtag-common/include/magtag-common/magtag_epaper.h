@@ -32,24 +32,24 @@ struct font_meta {
     bool inverted;
 };
 
-void epaper_FullClear(void);
-void epaper_ShowFullFrame(const char *frame);
+void epaper_full_clear(void);
+void epaper_show_full_frame(const char *frame);
 void epaper_initialize_hal(void);
 void epaper_show_golioth(void);
 
 void epaper_init(void);
 
-void epaper_Write(uint8_t *str, uint8_t str_len, uint8_t line, int16_t x_left,
+void epaper_write(uint8_t *str, uint8_t str_len, uint8_t line, int16_t x_left,
 	uint8_t font_size_in_lines);
-void epaper_WriteInverted(uint8_t *str, uint8_t str_len, uint8_t line, int16_t
+void epaper_write_inverted(uint8_t *str, uint8_t str_len, uint8_t line, int16_t
 	x_left, uint8_t font_size_in_lines);
 
-void epaper_WriteLine(uint8_t *str, uint8_t str_len, uint8_t line);
+void epaper_write_line(uint8_t *str, uint8_t str_len, uint8_t line);
 
-void epaper_WriteString(uint8_t *str, uint8_t str_len, uint8_t line, int16_t
+void epaper_write_string(uint8_t *str, uint8_t str_len, uint8_t line, int16_t
 	x_left, struct font_meta *font_m);
-void epaper_WriteLine_2x(uint8_t *str, uint8_t str_len, uint8_t line);
-void epaper_WriteLine_4x(uint8_t *str, uint8_t str_len, uint8_t line);
+void epaper_write_line_2x(uint8_t *str, uint8_t str_len, uint8_t line);
+void epaper_write_line_4x(uint8_t *str, uint8_t str_len, uint8_t line);
 void epaper_autowrite(uint8_t *str, uint8_t str_len);
 
 #endif

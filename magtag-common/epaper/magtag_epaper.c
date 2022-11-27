@@ -119,8 +119,8 @@ static void EPD_2IN9D_DisplayPart(uint8_t *Image);
 static void EPD_2in9D_PartialClear(void);
 static void EPD_2IN9D_DeepSleep(void);
 static void EPD_2IN9D_Standby(void);
-static void epaper_LetterToRam(uint8_t letter, struct font_meta *font_m);
-static void epaper_StringToRam(uint8_t *str, uint8_t str_len, uint8_t line, int8_t show_n_chars, struct font_meta *font_m);
+static void epaper_letter_to_ram(uint8_t letter, struct font_meta *font_m);
+static void epaper_string_to_ram(uint8_t *str, uint8_t str_len, uint8_t line, int8_t show_n_chars, struct font_meta *font_m);
 
 static bool EPD_2IN9D_IsAsleep(void) {
     return _display_asleep;
@@ -391,13 +391,13 @@ void EPD_2in9D_PartialClear(void) {
  * back to sleep
  *
  */
-void epaper_FullClear(void) {
+void epaper_full_clear(void) {
     EPD_2IN9D_Init();
     EPD_2IN9D_Clear();
     EPD_2IN9D_Standby();
 }
 
-void epaper_ShowFullFrame(const char *frame) {
+void epaper_show_full_frame(const char *frame) {
     if (_display_asleep) {
         EPD_2IN9D_Init();
         EPD_2IN9D_SetPartReg();
@@ -424,7 +424,7 @@ void epaper_initialize_hal(void) {
 void epaper_show_golioth(void) {
     EPD_2IN9D_Init();
     EPAPER_LOG_INF("Show Golioth logo");
-    epaper_ShowFullFrame((void *)golioth_logo); /* cast because function is not expecting a CONST array) */
+    epaper_show_full_frame((void *)golioth_logo); /* cast because function is not expecting a CONST array) */
     EPD_2IN9D_Standby();
 }
 
@@ -477,7 +477,7 @@ static void EPD_2IN9D_DeepSleep(void)
  * @param bytes_in_letter    total bytes neede from the font file for this
  *                                 letter
  */
-static void epaper_LetterToRam(uint8_t letter, struct font_meta *font_m)
+static void epaper_letter_to_ram(uint8_t letter, struct font_meta *font_m)
 {
     /* Write space if letter is out of bounds */
     if ((letter < ' ') || (letter> '~')) { letter = ' '; }
@@ -498,7 +498,7 @@ static void epaper_LetterToRam(uint8_t letter, struct font_meta *font_m)
     }
 }
 
-static void epaper_StringToRam(uint8_t *str, uint8_t str_len, uint8_t line, int8_t show_n_chars, struct font_meta *font_m)
+static void epaper_string_to_ram(uint8_t *str, uint8_t str_len, uint8_t line, int8_t show_n_chars, struct font_meta *font_m)
 {
     uint8_t letter;
     uint8_t letter_column;
@@ -531,7 +531,7 @@ static void epaper_StringToRam(uint8_t *str, uint8_t str_len, uint8_t line, int8
             letter = str[char_count-j];
         }
 
-        epaper_LetterToRam(letter, font_m);
+        epaper_letter_to_ram(letter, font_m);
     }
 
     if (show_n_chars < 0) {
@@ -559,7 +559,7 @@ static void epaper_StringToRam(uint8_t *str, uint8_t str_len, uint8_t line, int8
  * @param x_left  Pixel position to begin; 295=left 0=right
  * @param *font_m  Pointer to a font_meta struct describing the font array
  */
-void epaper_WriteString(uint8_t *str,
+void epaper_write_string(uint8_t *str,
                         uint8_t str_len,
                         uint8_t line,
                         int16_t x_left,
@@ -621,7 +621,7 @@ void epaper_WriteString(uint8_t *str,
                                   pixel_height,
                                   col_width);
         EPD_2IN9D_SendCommand(0x13);
-        epaper_StringToRam(str, str_len, line, char_limit, font_m);
+        epaper_string_to_ram(str, str_len, line, char_limit, font_m);
         EPD_2IN9D_SendCommand(0x92);
 
         if (i==0) {
@@ -661,14 +661,14 @@ struct font_meta* get_font_meta(uint8_t linesize) {
  *                295=left 0=right -1=use full line -2=center text
  * @param font_size_in_lines  Height of characters (1, 2, or 4)
  */
-void epaper_Write(uint8_t *str, uint8_t str_len, uint8_t line, int16_t x_left, uint8_t font_size_in_lines)
+void epaper_write(uint8_t *str, uint8_t str_len, uint8_t line, int16_t x_left, uint8_t font_size_in_lines)
 {
     struct font_meta *font_m = get_font_meta(font_size_in_lines);
     if (font_m == 0) { return; }
 
     EPD_2IN9D_Init();
     EPD_2IN9D_SetPartReg();
-    epaper_WriteString(str, str_len, line, x_left, font_m);
+    epaper_write_string(str, str_len, line, x_left, font_m);
     EPD_2IN9D_Standby();
 }
 
@@ -685,13 +685,13 @@ void epaper_Write(uint8_t *str, uint8_t str_len, uint8_t line, int16_t x_left, u
  *                295=left 0=right -1=use full line -2=center text
  * @param font_size_in_lines  Height of characters (1, 2, or 4)
  */
-void epaper_WriteInverted(uint8_t *str, uint8_t str_len, uint8_t line, int16_t x_left, uint8_t font_size_in_lines)
+void epaper_write_inverted(uint8_t *str, uint8_t str_len, uint8_t line, int16_t x_left, uint8_t font_size_in_lines)
 {
     struct font_meta *font_m = get_font_meta(font_size_in_lines);
     if (font_m == 0) { return; }
 
     font_m->inverted = true;
-    epaper_Write(str, str_len, line, x_left, font_size_in_lines);
+    epaper_write(str, str_len, line, x_left, font_size_in_lines);
     font_m->inverted = false;
 }
 
@@ -705,17 +705,17 @@ void epaper_WriteInverted(uint8_t *str, uint8_t str_len, uint8_t line, int16_t x
  * @param str_len       numer of characters in string
  * @param line          0..16
  */
-void epaper_WriteLine(uint8_t *str, uint8_t str_len, uint8_t line)
+void epaper_write_line(uint8_t *str, uint8_t str_len, uint8_t line)
 {
-    epaper_WriteString(str, str_len, line, FULL_WIDTH, &font_6x8);
+    epaper_write_string(str, str_len, line, FULL_WIDTH, &font_6x8);
 }
 
-void epaper_WriteLine_2x(uint8_t *str, uint8_t str_len, uint8_t line) {
-    epaper_WriteString(str, str_len, line, FULL_WIDTH, &font_10x16);
+void epaper_write_line_2x(uint8_t *str, uint8_t str_len, uint8_t line) {
+    epaper_write_string(str, str_len, line, FULL_WIDTH, &font_10x16);
 }
 
-void epaper_WriteLine_4x(uint8_t *str, uint8_t str_len, uint8_t line) {
-    epaper_WriteString(str, str_len, line, FULL_WIDTH, &font_19x32);
+void epaper_write_line_4x(uint8_t *str, uint8_t str_len, uint8_t line) {
+    epaper_write_string(str, str_len, line, FULL_WIDTH, &font_19x32);
 }
 
 /**
@@ -735,7 +735,7 @@ void epaper_autowrite(uint8_t *str, uint8_t str_len)
         }
     }
     EPD_2IN9D_SetPartReg();
-    epaper_WriteLine_2x(str, str_len, (line++)*2);
+    epaper_write_line_2x(str, str_len, (line++)*2);
 
     EPD_2IN9D_Standby();
 }

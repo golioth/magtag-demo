@@ -211,7 +211,7 @@ void main(void)
 	gpio_pin_set_dt(&act, 0);
 
 	/* ePaper */
-	epaper_Write(CONFIG_MAGTAG_NAME, strlen(CONFIG_MAGTAG_NAME), 14, -1, 2);
+	epaper_write(CONFIG_MAGTAG_NAME, strlen(CONFIG_MAGTAG_NAME), 14, -1, 2);
 
 	/* write successful connection message to screen */
 	LOG_INF("Connected to Golioth!: %s", CONFIG_MAGTAG_NAME);
