@@ -517,7 +517,6 @@ static void epaper_letter_to_ram(uint8_t letter, struct font_meta *font_m)
 static void epaper_string_to_ram(uint8_t *str, uint8_t str_len, uint8_t line, int8_t show_n_chars, struct font_meta *font_m)
 {
     uint8_t letter;
-    uint8_t letter_column;
     uint8_t char_count;
     uint8_t line_space_front = 0;
     uint8_t line_space_back = 0;
