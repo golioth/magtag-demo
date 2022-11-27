@@ -221,31 +221,6 @@ static void EPD_2IN9D_SetPartReg(void)
     EPD_2IN9D_SendCommand(0X50);
     EPD_2IN9D_SendData(0x97);
 
-    unsigned int count;
-    EPD_2IN9D_SendCommand(0x20);
-    for(count=0; count<44; count++) {
-        EPD_2IN9D_SendData(EPD_2IN9D_lut_vcom1[count]);
-    }
-
-    EPD_2IN9D_SendCommand(0x21);
-    for(count=0; count<42; count++) {
-        EPD_2IN9D_SendData(EPD_2IN9D_lut_ww1[count]);
-    }
-
-    EPD_2IN9D_SendCommand(0x22);
-    for(count=0; count<42; count++) {
-        EPD_2IN9D_SendData(EPD_2IN9D_lut_bw1[count]);
-    }
-
-    EPD_2IN9D_SendCommand(0x23);
-    for(count=0; count<42; count++) {
-        EPD_2IN9D_SendData(EPD_2IN9D_lut_wb1[count]);
-    }
-
-    EPD_2IN9D_SendCommand(0x24);
-    for(count=0; count<42; count++) {
-        EPD_2IN9D_SendData(EPD_2IN9D_lut_bb1[count]);
-    }
 }
 
 /******************************************************************************
@@ -266,7 +241,36 @@ parameter:
 ******************************************************************************/
 static void EPD_2IN9D_Init(void)
 {
-    if (_display_asleep) { EPD_2IN9D_Reset(); }
+    if (_display_asleep) {
+        EPD_2IN9D_Reset();
+
+        /* Rewrite LUTs after reset */
+        unsigned int count;
+        EPD_2IN9D_SendCommand(0x20);
+        for(count=0; count<44; count++) {
+            EPD_2IN9D_SendData(EPD_2IN9D_lut_vcom1[count]);
+        }
+
+        EPD_2IN9D_SendCommand(0x21);
+        for(count=0; count<42; count++) {
+            EPD_2IN9D_SendData(EPD_2IN9D_lut_ww1[count]);
+        }
+
+        EPD_2IN9D_SendCommand(0x22);
+        for(count=0; count<42; count++) {
+            EPD_2IN9D_SendData(EPD_2IN9D_lut_bw1[count]);
+        }
+
+        EPD_2IN9D_SendCommand(0x23);
+        for(count=0; count<42; count++) {
+            EPD_2IN9D_SendData(EPD_2IN9D_lut_wb1[count]);
+        }
+
+        EPD_2IN9D_SendCommand(0x24);
+        for(count=0; count<42; count++) {
+            EPD_2IN9D_SendData(EPD_2IN9D_lut_bb1[count]);
+        }
+    }
     EPD_2IN9D_SendCommand(0x00); //panel setting
     EPD_2IN9D_SendData(0x1f);    //LUT from OTP，KW-BF KWR-AF BWROTP 0f BWOTP 1f
 
