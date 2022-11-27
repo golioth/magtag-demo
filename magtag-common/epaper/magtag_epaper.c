@@ -30,6 +30,27 @@
 #include "magtag_epaper_hal.h"
 #include "GoliothLogo.h"
 
+/* Private Function Prototypes */
+static bool EPD_2IN9D_IsAsleep(void);
+static void EPD_2IN9D_Reset(void);
+static void EPD_2IN9D_SendCommand(uint8_t Reg);
+static void EPD_2IN9D_SendData(uint8_t Data);
+static void EPD_2IN9D_ReadBusy(void);
+static void EPD_2IN9D_SetPartReg(void);
+static void EPD_2IN9D_Refresh(void);
+static void EPD_2IN9D_Init(void);
+static void EPD_2IN9D_SendRepeatedBytePattern(uint8_t byte_pattern, uint16_t how_many);
+static void EPD_2IN9D_SendPartialAddr(uint16_t x, uint16_t y, uint16_t w, uint16_t h);
+static void EPD_2IN9D_SendPartialLineAddr(uint8_t line);
+static void EPD_2IN9D_Clear(void);
+static void EPD_2IN9D_Display(uint8_t *Image);
+static void EPD_2IN9D_DisplayPart(uint8_t *Image);
+static void EPD_2in9D_PartialClear(void);
+static void EPD_2IN9D_DeepSleep(void);
+static void EPD_2IN9D_Standby(void);
+static void epaper_letter_to_ram(uint8_t letter, struct font_meta *font_m);
+static void epaper_string_to_ram(uint8_t *str, uint8_t str_len, uint8_t line, int8_t show_n_chars, struct font_meta *font_m);
+
 /**
  * There's no way around this Zephyr-specific log register. This ifdef statement
  * tests for the following symbol: CONFIG_KERNEL_BIN_NAME="zephyr"
@@ -100,27 +121,6 @@ const unsigned char EPD_2IN9D_lut_bb1[] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 };
-
-/* Private Function Prototypes */
-static bool EPD_2IN9D_IsAsleep(void);
-static void EPD_2IN9D_Reset(void);
-static void EPD_2IN9D_SendCommand(uint8_t Reg);
-static void EPD_2IN9D_SendData(uint8_t Data);
-static void EPD_2IN9D_ReadBusy(void);
-static void EPD_2IN9D_SetPartReg(void);
-static void EPD_2IN9D_Refresh(void);
-static void EPD_2IN9D_Init(void);
-static void EPD_2IN9D_SendRepeatedBytePattern(uint8_t byte_pattern, uint16_t how_many);
-static void EPD_2IN9D_SendPartialAddr(uint16_t x, uint16_t y, uint16_t w, uint16_t h);
-static void EPD_2IN9D_SendPartialLineAddr(uint8_t line);
-static void EPD_2IN9D_Clear(void);
-static void EPD_2IN9D_Display(uint8_t *Image);
-static void EPD_2IN9D_DisplayPart(uint8_t *Image);
-static void EPD_2in9D_PartialClear(void);
-static void EPD_2IN9D_DeepSleep(void);
-static void EPD_2IN9D_Standby(void);
-static void epaper_letter_to_ram(uint8_t letter, struct font_meta *font_m);
-static void epaper_string_to_ram(uint8_t *str, uint8_t str_len, uint8_t line, int8_t show_n_chars, struct font_meta *font_m);
 
 static bool EPD_2IN9D_IsAsleep(void) {
     return _display_asleep;
