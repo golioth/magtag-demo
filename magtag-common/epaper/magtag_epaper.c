@@ -285,6 +285,7 @@ static void EPD_2IN9D_SendRepeatedBytePattern(uint8_t byte_pattern, uint16_t how
 }
 
 static void EPD_2IN9D_SendPartialAddr(uint16_t x, uint16_t y, uint16_t w, uint16_t h) {
+    EPD_2IN9D_SendCommand(0x91); //enter partial mode
     EPD_2IN9D_SendCommand(0x90); //resolution setting
     EPD_2IN9D_SendData(x); //x-start
     EPD_2IN9D_SendData(x+w - 1); //x-end
@@ -356,7 +357,6 @@ static void EPD_2IN9D_DisplayPart(uint8_t *Image)
 {
     /* Set partial Windows */
     EPD_2IN9D_SetPartReg();
-    EPD_2IN9D_SendCommand(0x91); //This command makes the display enter partial mode
     EPD_2IN9D_SendPartialAddr(0, 0, EPD_2IN9D_WIDTH, EPD_2IN9D_HEIGHT);
     EPD_2IN9D_Display(Image);
 }
@@ -627,7 +627,6 @@ void epaper_write_string(uint8_t *str,
     uint8_t pixel_height = font_m->letter_height_bytes * 8;
 
     for (uint8_t i=0; i<2; i++) {
-        EPD_2IN9D_SendCommand(0x91);
         EPD_2IN9D_SendPartialAddr(line*8,
                                   col_start,
                                   pixel_height,
