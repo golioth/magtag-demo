@@ -34,20 +34,22 @@ struct font_meta {
 
 void epaper_FullClear(void);
 void epaper_ShowFullFrame(const char *frame);
-void epaper_hardware_init(void);
+void epaper_initialize_hal(void);
 void epaper_show_golioth(void);
+
 void epaper_init(void);
-void epaper_SendDoubleTextLine(uint8_t *str, uint8_t str_len, bool full);
-void epaper_LetterToRam(uint8_t letter, struct font_meta *font_m);
-void epaper_Write(uint8_t *str, uint8_t str_len, uint8_t line, int16_t x_left, uint8_t font_size_in_lines);
-void epaper_WriteInverted(uint8_t *str, uint8_t str_len, uint8_t line, int16_t x_left, uint8_t font_size_in_lines);
+
+void epaper_Write(uint8_t *str, uint8_t str_len, uint8_t line, int16_t x_left,
+	uint8_t font_size_in_lines);
+void epaper_WriteInverted(uint8_t *str, uint8_t str_len, uint8_t line, int16_t
+	x_left, uint8_t font_size_in_lines);
+
 void epaper_WriteLine(uint8_t *str, uint8_t str_len, uint8_t line);
-void epaper_WriteDoubleLine(uint8_t *str, uint8_t str_len, uint8_t line);
-void epaper_StringToRam(uint8_t *str, uint8_t str_len, uint8_t line, int8_t show_n_chars, struct font_meta *font_m);
-void epaper_WriteString(uint8_t *str, uint8_t str_len, uint8_t line, int16_t x_left, struct font_meta *font_m);
-void epaper_WriteLargeString(uint8_t *str, uint8_t str_len, uint8_t line, int16_t x_left);
-void epaper_WriteLargeLine(uint8_t *str, uint8_t str_len, uint8_t line);
-void epaper_WriteLargeLetter(uint8_t letter, uint16_t x, uint8_t line);
+
+void epaper_WriteString(uint8_t *str, uint8_t str_len, uint8_t line, int16_t
+	x_left, struct font_meta *font_m);
+void epaper_WriteLine_2x(uint8_t *str, uint8_t str_len, uint8_t line);
+void epaper_WriteLine_4x(uint8_t *str, uint8_t str_len, uint8_t line);
 void epaper_autowrite(uint8_t *str, uint8_t str_len);
 
 #endif

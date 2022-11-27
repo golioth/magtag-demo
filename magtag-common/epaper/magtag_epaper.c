@@ -119,8 +119,8 @@ static void EPD_2IN9D_DisplayPart(uint8_t *Image);
 static void EPD_2in9D_PartialClear(void);
 static void EPD_2IN9D_DeepSleep(void);
 static void EPD_2IN9D_Standby(void);
-static void double_invert(uint8_t orig_column, uint8_t return_cols[2]);
-
+static void epaper_LetterToRam(uint8_t letter, struct font_meta *font_m);
+static void epaper_StringToRam(uint8_t *str, uint8_t str_len, uint8_t line, int8_t show_n_chars, struct font_meta *font_m);
 
 static bool EPD_2IN9D_IsAsleep(void) {
     return _display_asleep;
@@ -409,7 +409,13 @@ void epaper_ShowFullFrame(const char *frame) {
     EPD_2IN9D_Standby();
 }
 
-void epaper_hardware_init(void) {
+/**
+ * @brief Run HAL initialization
+ *
+ * This calls the OS/implementation specific function that configures hardware
+ * pins, logging, and delay functions. This will be called by epaper_init().
+ */
+void epaper_initialize_hal(void) {
     _display_asleep = true;
     EPAPER_LOG_INF("Setup ePaper pins");
     epaper_hal_setup_hardware();
@@ -428,7 +434,7 @@ void epaper_show_golioth(void) {
  *
  */
 void epaper_init(void) {
-    epaper_hardware_init();
+    epaper_initialize_hal();
     EPAPER_LOG_INF("ePaper Init and Clear");
     EPD_2IN9D_Init();
     EPD_2IN9D_Clear();
@@ -464,95 +470,14 @@ static void EPD_2IN9D_DeepSleep(void)
 }
 
 /**
+ * @brief write one character from font file epaper display ram
  *
- * @brief Double each pixel to enlarge the font, and invert the value to match
- * the needs of the display
- *
- * @param orig_column   Font column input
- * @param return_cols   Two-byte array to store the results
- */
-static void double_invert(uint8_t orig_column, uint8_t return_cols[2]) {
-    // Double the pixesl, the flip endianness and invert
-    uint8_t upper_column = 0;
-    uint8_t lower_column = 0;
-    for (uint8_t i=0; i<4; i++)
-    {
-        if (orig_column & (1<<(i+4))) upper_column |= 0b11 << (i*2);
-        if (orig_column & (1<<(i))) lower_column |= 0b11 << (i*2);
-    }
-    return_cols[1] = ~upper_column;
-    return_cols[0] = ~lower_column;
-}
-
-/**
- * @brief Write data for double-height text to display
- *
- * Tihs can be used for both partial and full writes.
- *
- * @param str       String to display
- * @param str_len   Length of string
- * @param full      True if called by a full refresh, false for a partial
- * refresh
- */
-void epaper_SendDoubleTextLine(uint8_t *str, uint8_t str_len, bool full)
-{
-    uint8_t send_col[2] = {0};
-    uint8_t letter;
-    uint8_t column = 0;
-    uint8_t str_idx = 23;
-    uint8_t vamp_count = full? 64:8;
-    for (uint8_t i=0; i<vamp_count; i++) EPD_2IN9D_SendData(0xff); //Unused columns
-    for (uint16_t j = 0; j < 144; j++) {
-        for (uint16_t i = 0; i < 1; i++) {
-            if (str_idx >= str_len)
-            {
-                send_col[0] = 0xff;
-                send_col[1] = 0xff;
-            }
-            else
-            {
-                if (str[str_idx] < 32 || str[str_idx] > 127)
-                {
-                    //Out of bounds, print a space
-                    letter = 0;
-                }
-                else
-                {
-                    letter = str[str_idx] - 32;
-                }
-                uint8_t letter_column = font6x8[(6*letter)+column];
-                double_invert(letter_column, send_col);
-            }
-
-            for (uint8_t i=0; i<2; i++)
-            {
-                EPD_2IN9D_SendData(send_col[1]);
-                EPD_2IN9D_SendData(send_col[0]);
-                if (full)
-                {
-                    for (uint8_t j=0; j<14; j++) EPD_2IN9D_SendData(0xff); //Unused columns
-                }
-            }
-
-            if (++column > 5)
-            {
-                column = 0;
-                --str_idx;
-            }
-        }
-    }
-    for (uint8_t i=0; i<vamp_count; i++) EPD_2IN9D_SendData(0xff); //Unused columns
-}
-
-/**
- * @brief Write one character from font file ePaper display RAM
- *
- * @param letter    The letter to write to the display
- * @param font_p    Pointer to the font array
- * @param bytes_in_letter    Total bytes neede from the font file for this
+ * @param letter    the letter to write to the display
+ * @param font_p    pointer to the font array
+ * @param bytes_in_letter    total bytes neede from the font file for this
  *                                 letter
  */
-void epaper_LetterToRam(uint8_t letter, struct font_meta *font_m)
+static void epaper_LetterToRam(uint8_t letter, struct font_meta *font_m)
 {
     /* Write space if letter is out of bounds */
     if ((letter < ' ') || (letter> '~')) { letter = ' '; }
@@ -573,7 +498,7 @@ void epaper_LetterToRam(uint8_t letter, struct font_meta *font_m)
     }
 }
 
-void epaper_StringToRam(uint8_t *str, uint8_t str_len, uint8_t line, int8_t show_n_chars, struct font_meta *font_m)
+static void epaper_StringToRam(uint8_t *str, uint8_t str_len, uint8_t line, int8_t show_n_chars, struct font_meta *font_m)
 {
     uint8_t letter;
     uint8_t letter_column;
@@ -785,38 +710,12 @@ void epaper_WriteLine(uint8_t *str, uint8_t str_len, uint8_t line)
     epaper_WriteString(str, str_len, line, FULL_WIDTH, &font_6x8);
 }
 
-void epaper_WriteLargeLine(uint8_t *str, uint8_t str_len, uint8_t line) {
+void epaper_WriteLine_2x(uint8_t *str, uint8_t str_len, uint8_t line) {
     epaper_WriteString(str, str_len, line, FULL_WIDTH, &font_10x16);
 }
 
-/**
- * @brief Use partial refresh to show string on one double-sized line of the
- * display
- *
- * @param str           string to be written to display
- * @param str_len       numer of characters in string
- * @param line          0..8
- */
-void epaper_WriteDoubleLine(uint8_t *str, uint8_t str_len, uint8_t line)
-{
-    line %= 8;  /* Bounding */
-
-    EPD_2IN9D_SendCommand(0x91);
-    EPD_2IN9D_SendPartialLineAddr(line);
-    EPD_2IN9D_SendCommand(0x13);
-    epaper_SendDoubleTextLine(str, str_len, false);
-    EPD_2IN9D_SendCommand(0x92);
-
-    /* Refresh display, then write data again to prewind the "last-frame" */
-    EPD_2IN9D_Refresh();
-
-    EPD_2IN9D_SendCommand(0x91);
-    EPD_2IN9D_SendPartialLineAddr(line);
-    EPD_2IN9D_SendCommand(0x13);
-    epaper_SendDoubleTextLine(str, str_len, false);
-    EPD_2IN9D_SendCommand(0x92);
-
-    /* Don't refresh, this data will be used in the next partial refresh */
+void epaper_WriteLine_4x(uint8_t *str, uint8_t str_len, uint8_t line) {
+    epaper_WriteString(str, str_len, line, FULL_WIDTH, &font_19x32);
 }
 
 /**
@@ -836,9 +735,7 @@ void epaper_autowrite(uint8_t *str, uint8_t str_len)
         }
     }
     EPD_2IN9D_SetPartReg();
-    epaper_WriteLargeLine(str, str_len, (line++)*2);
+    epaper_WriteLine_2x(str, str_len, (line++)*2);
 
     EPD_2IN9D_Standby();
 }
-
-

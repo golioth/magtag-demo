@@ -572,7 +572,7 @@ void main(void)
 	/* buttons */
 	buttons_init(button_pressed);
 
-	epaper_hardware_init();
+	epaper_init();
 	epaper_FullClear();
 	epaper_ShowFullFrame(golioth_nametag);
 	uint8_t default_screen = (DEFAULT_FRAME < 4 ? DEFAULT_FRAME : 0);
