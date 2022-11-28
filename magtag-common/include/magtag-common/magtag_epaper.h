@@ -42,6 +42,7 @@ bool epaper_is_asleep(void);
 
 void epaper_show_golioth(void);
 void epaper_show_full_frame(const char *frame);
+void epaper_show_full_frame_inverted(const char *frame);
 
 void epaper_write(uint8_t *str, uint8_t str_len, uint8_t line, int16_t x_left,
 	uint8_t font_size_in_lines);

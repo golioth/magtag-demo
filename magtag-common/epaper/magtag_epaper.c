@@ -43,7 +43,9 @@ static void EPD_2IN9D_SendRepeatedBytePattern(uint8_t byte_pattern, uint16_t how
 static void EPD_2IN9D_SendPartialAddr(uint16_t x, uint16_t y, uint16_t w, uint16_t h);
 static void EPD_2IN9D_SendPartialLineAddr(uint8_t line);
 static void EPD_2IN9D_Clear(void);
+static void EPD_2IN9D_SendImage(uint8_t *Image, bool inverted);
 static void EPD_2IN9D_Display(uint8_t *Image);
+static void EPD_2IN9D_DisplayInverted(uint8_t *Image);
 static void EPD_2IN9D_DisplayPart(uint8_t *Image);
 static void EPD_2in9D_PartialClear(void);
 static void EPD_2IN9D_DeepSleep(void);
@@ -339,8 +341,7 @@ static void EPD_2IN9D_Clear(void)
 function : Sends the image buffer in RAM to e-Paper and displays
 parameter:
 ******************************************************************************/
-static void EPD_2IN9D_Display(uint8_t *Image)
-{
+static void EPD_2IN9D_SendImage(uint8_t *Image, bool inverted) {
     uint16_t Width, Height;
     Width = (EPD_2IN9D_WIDTH % 8 == 0)? (EPD_2IN9D_WIDTH / 8 ): (EPD_2IN9D_WIDTH / 8 + 1);
     Height = EPD_2IN9D_HEIGHT;
@@ -348,9 +349,24 @@ static void EPD_2IN9D_Display(uint8_t *Image)
     EPD_2IN9D_SendCommand(0x13);
     for (uint16_t j = 0; j < Height; j++) {
         for (uint16_t i = 0; i < Width; i++) {
-            EPD_2IN9D_SendData(Image[i + j * Width]);
+            if (inverted) {
+                EPD_2IN9D_SendData(~Image[i + j * Width]);
+            }
+            else {
+                EPD_2IN9D_SendData(Image[i + j * Width]);
+            }
         }
     }
+}
+
+static void EPD_2IN9D_Display(uint8_t *Image)
+{
+    EPD_2IN9D_SendImage(Image, false);
+}
+
+static void EPD_2IN9D_DisplayInverted(uint8_t *Image)
+{
+    EPD_2IN9D_SendImage(Image, true);
 }
 
 /******************************************************************************
@@ -421,6 +437,18 @@ void epaper_show_full_frame(const char *frame) {
     EPD_2IN9D_Display((unsigned char *)frame);
     EPD_2IN9D_Refresh();
     EPD_2IN9D_Display((unsigned char *)frame);
+    EPD_2IN9D_SetPartReg();
+    EPD_2IN9D_Standby();
+}
+
+void epaper_show_full_frame_inverted(const char *frame) {
+    if (_display_asleep) {
+        EPD_2IN9D_Init();
+        EPD_2IN9D_SetPartReg();
+    }
+    EPD_2IN9D_DisplayInverted((unsigned char *)frame);
+    EPD_2IN9D_Refresh();
+    EPD_2IN9D_DisplayInverted((unsigned char *)frame);
     EPD_2IN9D_SetPartReg();
     EPD_2IN9D_Standby();
 }
