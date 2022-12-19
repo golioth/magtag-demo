@@ -781,3 +781,12 @@ void epaper_autowrite(uint8_t *str, uint8_t str_len)
 
     EPD_2IN9D_Standby();
 }
+
+void epaper_wake(void) {
+    EPD_2IN9D_Init();
+}
+
+void epaper_wake_partial(void) {
+    EPD_2IN9D_Init();
+    EPD_2IN9D_SetPartReg();
+}

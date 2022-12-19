@@ -216,7 +216,6 @@ void main(void)
 	/* write successful connection message to screen */
 	LOG_INF("Connected to Golioth!: %s", CONFIG_MAGTAG_NAME);
 	epaper_autowrite("Connected to Golioth!", 21);
-	EPD_2IN9D_Sleep();
 	
 	led_states[0].color = RED; led_states[0].state = 1;
 	led_states[1].color = GREEN; led_states[1].state = 1;
